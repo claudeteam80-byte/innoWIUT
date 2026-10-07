@@ -23,6 +23,7 @@ export const paths = {
     startups: '/admin/startups',
     startupDetail: (id: string) => `/admin/startups/${encodeURIComponent(id)}`,
     mentors: '/admin/mentors',
+    meetingRequests: '/admin/meeting-requests',
     settings: '/admin/settings',
   },
 } as const;

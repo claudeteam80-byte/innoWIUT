@@ -362,6 +362,63 @@ await check('meeting requests: founder requests, cannot confirm; admin confirms'
   assert(conf.data?.[0]?.status === 'confirmed', JSON.stringify(conf));
 });
 
+section('Admin functions');
+await check('founders and visitors cannot call admin functions', async () => {
+  assertDenied(await a.rpc('admin_dashboard_stats'), 'founder stats');
+  assertDenied(await a.rpc('admin_startup_list', {}), 'founder list');
+  assertDenied(
+    await a.rpc('assign_mentor', { p_startup_id: startupA.id, p_mentor_id: mentor.id }),
+    'founder assign',
+  );
+  assertDenied(await a.rpc('end_mentor_assignment', { p_startup_id: startupA.id }), 'founder end');
+  assertDenied(await a.rpc('delete_mentor', { p_mentor_id: mentor.id }), 'founder delete mentor');
+  assertDenied(await anon.rpc('admin_dashboard_stats'), 'anon stats');
+});
+await check('admin reads server-side stats and the startup list', async () => {
+  const stats = await admin.rpc('admin_dashboard_stats');
+  if (stats.error) throw stats.error;
+  assert(stats.data.length === 1 && 'active_startups' in stats.data[0], JSON.stringify(stats.data));
+  const list = await admin.rpc('admin_startup_list', { p_sort: 'newest', p_limit: 5 });
+  if (list.error) throw list.error;
+  assert(Array.isArray(list.data), 'list not an array');
+});
+await check(
+  'assign_mentor switches mentors and keeps history; deletion is blocked while assigned',
+  async () => {
+    const second = await admin
+      .from('mentors')
+      .insert({ name: `${TEMP_NAME_PREFIX} Second Mentor`, expertise: ['Product'] })
+      .select()
+      .single();
+    if (second.error) throw second.error;
+    const switched = await admin.rpc('assign_mentor', {
+      p_startup_id: startupA.id,
+      p_mentor_id: second.data.id,
+    });
+    if (switched.error) throw switched.error;
+    const rows = await admin
+      .from('mentor_assignments')
+      .select('mentor_id, ended_at')
+      .eq('startup_id', startupA.id);
+    const active = rows.data.filter((r) => r.ended_at === null);
+    assert(
+      rows.data.length === 2 && active.length === 1 && active[0].mentor_id === second.data.id,
+      JSON.stringify(rows.data),
+    );
+    assertDenied(
+      await admin.rpc('delete_mentor', { p_mentor_id: second.data.id }),
+      'deleted an assigned mentor',
+    );
+    const back = await admin.rpc('assign_mentor', {
+      p_startup_id: startupA.id,
+      p_mentor_id: mentor.id,
+    });
+    if (back.error) throw back.error;
+    const archived = await admin.rpc('delete_mentor', { p_mentor_id: second.data.id });
+    assert(archived.data === 'archived', `delete_mentor returned ${archived.data}`);
+  },
+);
+
 section('Database functions and views');
 await check(
   'activity_status() boundaries: 0–7 active, 8–14 needs_update, 15+ inactive, null inactive',

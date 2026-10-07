@@ -70,6 +70,10 @@ Do not promote an account that already owns a startup.
 - Every table has RLS enabled; `anon` has no table access.
 - Founders only see and change their own startup's rows (`private.owns_startup`).
 - Admins read everything and manage mentors, assignments, notes and meeting request status (`private.is_admin`).
+- Admin screens use database functions that refuse non-admins: `admin_dashboard_stats()` (counts computed in
+  Postgres), `admin_startup_list()` (search / filter / sort / pagination in Postgres), `assign_mentor()` /
+  `end_mentor_assignment()` (one active mentor per startup, history kept) and `delete_mentor()` (refuses while
+  assigned, archives a mentor with history instead of deleting it).
   Admins only see published founder updates, not drafts.
 - Column-level grants block client writes to `profiles.role`, `startups.owner_id`,
   `startups.onboarding_completed_at` and derived traction values.
@@ -102,6 +106,7 @@ Management API). Every record they create is labelled (`innowiut-temp` emails, `
 | `npm run remote:auth -- verify --code=123456` | Verifies the code, tests login and forgot/reset password |
 | `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions (Founder A / Founder B / temporary admin; no email sent) |
 | `npm run remote:journey -- --email=you+innowiut-temp-journey@example.com` | Full founder journey in a real browser: signup, 6-digit verification, onboarding with logo, traction, draft → published update with image, profile + team, mentor + meeting request, reload persistence, phone layout. Needs the built app served on port 4175 (`npm run build && npx vite preview --port 4175 --strictPort`). It sends one real verification email, reads the matching code from Supabase's stored hash of it and types it into the verify screen. Cleans up after itself. |
+| `npm run remote:admin-journey` | Admin journey in two real browsers (admin + founder): login, dashboard stats checked against `admin_dashboard_stats()`, startup search, detail tabs (traction, published-only updates), mentor creation with photo, assignment, notes, founder meeting request, admin confirmation, founder sees "Confirmed", cross-role route guards, tablet/phone layouts. Needs the built app on port 4175. Sends no email. |
 | `npm run remote:cleanup` | Deletes every temporary user, row and file and prints what remains |
 
 Always finish with `npm run remote:cleanup`.

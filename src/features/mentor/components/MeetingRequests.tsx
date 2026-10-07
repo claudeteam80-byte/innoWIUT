@@ -1,21 +1,13 @@
-import { Badge, type BadgeTone } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { formatDate } from '@/domain/dates';
-import type { Enums } from '@/types/database';
+import { MEETING_STATUS_META } from '@/domain/meetings';
 import type { MeetingRequest } from '../api';
-
-const STATUS: Record<Enums<'meeting_request_status'>, { label: string; tone: BadgeTone }> = {
-  requested: { label: 'Requested', tone: 'warning' },
-  confirmed: { label: 'Confirmed', tone: 'positive' },
-  completed: { label: 'Completed', tone: 'blue' },
-  declined: { label: 'Declined', tone: 'danger' },
-  cancelled: { label: 'Cancelled', tone: 'neutral' },
-};
 
 export function MeetingRequests({ requests }: { requests: MeetingRequest[] }) {
   return (
     <ul className="space-y-3">
       {requests.map((request) => {
-        const status = STATUS[request.status];
+        const status = MEETING_STATUS_META[request.status];
         return (
           <li key={request.id} className="rounded-lg border border-line p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">

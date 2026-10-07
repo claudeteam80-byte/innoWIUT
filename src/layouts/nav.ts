@@ -1,5 +1,6 @@
 import {
   Building2,
+  CalendarClock,
   FileText,
   LayoutDashboard,
   Settings,
@@ -24,5 +25,6 @@ export const adminNavItems: NavItem[] = [
   { label: 'Ecosystem Overview', to: paths.admin.dashboard, icon: LayoutDashboard, end: true },
   { label: 'Startups', to: paths.admin.startups, icon: Building2 },
   { label: 'Mentors', to: paths.admin.mentors, icon: Users },
+  { label: 'Meeting Requests', to: paths.admin.meetingRequests, icon: CalendarClock },
   { label: 'Settings', to: paths.admin.settings, icon: Settings },
 ];

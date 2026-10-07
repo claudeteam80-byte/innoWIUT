@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activityMeta,
   ACTIVITY_THRESHOLDS,
   activityFromDays,
   daysSince,
@@ -84,5 +85,26 @@ describe('latestActivityDate', () => {
 
   it('returns null when there is nothing to compare', () => {
     expect(latestActivityDate(null, undefined, '')).toBeNull();
+  });
+});
+
+describe('activityMeta', () => {
+  it('labels database activity statuses', () => {
+    expect(activityMeta('active')).toEqual({ key: 'active', label: 'Active', tone: 'positive' });
+    expect(activityMeta('needs_update')).toEqual({
+      key: 'needs_update',
+      label: 'Needs Update',
+      tone: 'warning',
+    });
+    expect(activityMeta('inactive')).toEqual({
+      key: 'inactive',
+      label: 'Inactive',
+      tone: 'danger',
+    });
+  });
+
+  it('treats unknown or missing status as inactive', () => {
+    expect(activityMeta(null).label).toBe('Inactive');
+    expect(activityMeta('weird').label).toBe('Inactive');
   });
 });

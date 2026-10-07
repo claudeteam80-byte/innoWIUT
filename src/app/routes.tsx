@@ -48,12 +48,30 @@ const SettingsPage = page(
   () => import('@/features/settings/pages/SettingsPage'),
   (m) => m.SettingsPage,
 );
-const adminPages = () => import('@/features/admin/pages/AdminPages');
-const AdminDashboardPage = page(adminPages, (m) => m.AdminDashboardPage);
-const AdminStartupsPage = page(adminPages, (m) => m.AdminStartupsPage);
-const AdminStartupDetailPage = page(adminPages, (m) => m.AdminStartupDetailPage);
-const AdminMentorsPage = page(adminPages, (m) => m.AdminMentorsPage);
-const AdminSettingsPage = page(adminPages, (m) => m.AdminSettingsPage);
+const AdminDashboardPage = page(
+  () => import('@/features/admin/pages/AdminDashboardPage'),
+  (m) => m.AdminDashboardPage,
+);
+const AdminStartupsPage = page(
+  () => import('@/features/admin/pages/AdminStartupsPage'),
+  (m) => m.AdminStartupsPage,
+);
+const AdminStartupDetailPage = page(
+  () => import('@/features/admin/pages/AdminStartupDetailPage'),
+  (m) => m.AdminStartupDetailPage,
+);
+const AdminMentorsPage = page(
+  () => import('@/features/admin/pages/AdminMentorsPage'),
+  (m) => m.AdminMentorsPage,
+);
+const AdminMeetingRequestsPage = page(
+  () => import('@/features/admin/pages/AdminMeetingRequestsPage'),
+  (m) => m.AdminMeetingRequestsPage,
+);
+const AdminSettingsPage = page(
+  () => import('@/features/admin/pages/AdminSettingsPage'),
+  (m) => m.AdminSettingsPage,
+);
 
 export const routes: RouteObject[] = [
   { path: paths.root, element: <RootRedirect /> },
@@ -112,6 +130,7 @@ export const routes: RouteObject[] = [
           { path: paths.admin.startups, element: <AdminStartupsPage /> },
           { path: `${paths.admin.startups}/:id`, element: <AdminStartupDetailPage /> },
           { path: paths.admin.mentors, element: <AdminMentorsPage /> },
+          { path: paths.admin.meetingRequests, element: <AdminMeetingRequestsPage /> },
           { path: paths.admin.settings, element: <AdminSettingsPage /> },
         ],
       },

@@ -56,3 +56,17 @@ export function latestActivityDate(...values: DateInput[]): Date | null {
     .filter((date): date is Date => date !== null)
     .reduce<Date | null>((latest, date) => (!latest || date > latest ? date : latest), null);
 }
+
+/** Label and tone for an activity status computed by the database. */
+export function activityMeta(key: string | null | undefined): Omit<ActivityStatus, 'days'> {
+  if (key === 'active') return { key: 'active', label: 'Active', tone: 'positive' };
+  if (key === 'needs_update')
+    return { key: 'needs_update', label: 'Needs Update', tone: 'warning' };
+  return { key: 'inactive', label: 'Inactive', tone: 'danger' };
+}
+
+export const ACTIVITY_FILTERS = [
+  { value: 'active', label: 'Active (0–7 days)' },
+  { value: 'needs_update', label: 'Needs Update (8–14 days)' },
+  { value: 'inactive', label: 'Inactive (15+ days)' },
+] as const;

@@ -20,7 +20,8 @@
     "remote:auth": "NODE_USE_ENV_PROXY=1 node scripts/remote/auth-flow.mjs",
     "remote:security": "NODE_USE_ENV_PROXY=1 node scripts/remote/security.mjs",
     "remote:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/remote/cleanup.mjs",
-    "remote:journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/founder-journey.mjs"
+    "remote:journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/founder-journey.mjs",
+    "remote:admin-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/admin-journey.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -42,5 +42,9 @@ docs/             audit and setup docs
 Phase 3 (Founder Core) complete: signup with 6-digit email verification, 3-step onboarding,
 dashboard, traction (metrics, multi-metric recording, chart, history), updates (drafts, publishing,
 private images), startup profile with team, mentor page with notes and meeting requests, and
-settings — all backed by the real Supabase project. Admin screens are still placeholders. The app
-never shows sample or fake numbers.
+settings — all backed by the real Supabase project.
+
+Phase 4 (Admin Core) complete: ecosystem dashboard with server-computed stats, startups list with
+server-side search/filter/sort/pagination, startup detail (overview, traction, published updates,
+team, mentor), mentor management with photos, mentor assignment with history, mentor notes, meeting
+request handling and admin settings. The app never shows sample or fake numbers.

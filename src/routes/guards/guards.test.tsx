@@ -59,6 +59,8 @@ const routes: RouteObject[] = [
     children: [
       { path: '/admin/dashboard', element: <Screen name="Admin dashboard" /> },
       { path: '/admin/startups', element: <Screen name="Admin startups" /> },
+      { path: '/admin/meeting-requests', element: <Screen name="Admin meeting requests" /> },
+      { path: '/admin/startups/:id', element: <Screen name="Admin startup detail" /> },
     ],
   },
 ];
@@ -107,6 +109,14 @@ describe('RequireRole', () => {
     renderAt('/founder/dashboard', signedInAs('admin'));
     expect(await screen.findByRole('heading', { name: 'Admin dashboard' })).toBeInTheDocument();
   });
+
+  it.each(['/admin/meeting-requests', '/admin/startups/some-id', '/admin/startups'])(
+    'keeps a founder out of %s',
+    async (path) => {
+      renderAt(path, signedInAs('founder'));
+      expect(await screen.findByRole('heading', { name: 'Founder dashboard' })).toBeInTheDocument();
+    },
+  );
 
   it('lets an admin into the admin area', async () => {
     renderAt('/admin/startups', signedInAs('admin'));

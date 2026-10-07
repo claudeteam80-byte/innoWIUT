@@ -672,7 +672,77 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      admin_dashboard_stats: {
+        Args: never;
+        Returns: {
+          active_startups: number;
+          growing_startups: number;
+          inactive_startups: number;
+          needs_update_startups: number;
+          open_meeting_requests: number;
+          total_startups: number;
+          unassigned_startups: number;
+          updates_this_week: number;
+        }[];
+      };
+      admin_startup_list: {
+        Args: {
+          p_activity?: string;
+          p_industry?: string;
+          p_limit?: number;
+          p_mentor?: string;
+          p_offset?: number;
+          p_search?: string;
+          p_sort?: string;
+          p_stage?: string;
+        };
+        Returns: {
+          activity_status: string;
+          created_at: string;
+          days_since_activity: number;
+          founder_email: string;
+          founder_name: string;
+          growth_percent: number;
+          id: string;
+          industry: string;
+          last_active_on: string;
+          logo_path: string;
+          mentor_id: string;
+          mentor_name: string;
+          name: string;
+          primary_metric_currency: Database['public']['Enums']['currency_code'];
+          primary_metric_name: string;
+          primary_metric_previous: number;
+          primary_metric_unit: Database['public']['Enums']['metric_unit'];
+          primary_metric_value: number;
+          stage: string;
+          tagline: string;
+          total_count: number;
+        }[];
+      };
+      assign_mentor: {
+        Args: { p_mentor_id: string; p_startup_id: string };
+        Returns: {
+          assigned_at: string;
+          assigned_by: string | null;
+          ended_at: string | null;
+          id: string;
+          mentor_id: string;
+          startup_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'mentor_assignments';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       complete_onboarding: { Args: { payload: Json }; Returns: string };
+      delete_mentor: { Args: { p_mentor_id: string }; Returns: string };
+      end_mentor_assignment: {
+        Args: { p_startup_id: string };
+        Returns: boolean;
+      };
       record_traction: {
         Args: { p_entries: Json; p_note?: string; p_recorded_on?: string };
         Returns: {

@@ -26,9 +26,11 @@ export function historyRows(entries: readonly Entry[], metrics: readonly Metric[
   return rows.reverse();
 }
 
-/** Most recently updated metrics first. */
+/** Most recently updated metrics first (same order as the admin primary metric). */
 export function sortByRecent(metrics: readonly Metric[]): Metric[] {
-  return [...metrics].sort((a, b) =>
-    (b.last_recorded_on ?? '').localeCompare(a.last_recorded_on ?? ''),
+  return [...metrics].sort(
+    (a, b) =>
+      (b.last_recorded_on ?? '').localeCompare(a.last_recorded_on ?? '') ||
+      b.updated_at.localeCompare(a.updated_at),
   );
 }

@@ -539,4 +539,112 @@ select tests.expect_error(
 );
 rollback;
 
+-- ---------------------------------------------------------------------------
+-- Admin core functions (20261009000001_admin_core.sql)
+-- ---------------------------------------------------------------------------
+-- Founder A's startup was created directly; mark it onboarded so both A and C are listed.
+update public.startups set onboarding_completed_at = now() where owner_id = :founder_a;
+select id as alpha_id from public.startups where owner_id = :founder_a \gset
+select id as gamma_id from public.startups where owner_id = :founder_c \gset
+select id as aziz_id from public.mentors where name = 'Aziz' \gset
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_a, true);
+select tests.expect_error('select * from public.admin_dashboard_stats()', '42501', 'founder cannot read admin stats');
+select tests.expect_error('select * from public.admin_startup_list()', '42501', 'founder cannot list all startups');
+select tests.expect_error(format('select public.assign_mentor(%L, %L)', :'alpha_id', :'aziz_id'), '42501', 'founder cannot assign mentors');
+select tests.expect_error(format('select public.end_mentor_assignment(%L)', :'alpha_id'), '42501', 'founder cannot end assignments');
+select tests.expect_error(format('select public.delete_mentor(%L)', :'aziz_id'), '42501', 'founder cannot delete mentors');
+rollback;
+
+begin;
+set local role anon;
+select tests.expect_error('select * from public.admin_dashboard_stats()', '42501', 'anon cannot read admin stats');
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+select tests.check(
+  (select row(total_startups, active_startups, needs_update_startups, inactive_startups,
+              updates_this_week, growing_startups, unassigned_startups, open_meeting_requests)::text
+   from public.admin_dashboard_stats()) = '(2,2,0,0,1,2,1,0)',
+  'admin stats: 2 onboarded, both active, 1 update this week, 2 growing, 1 unassigned, 0 open requests'
+);
+select tests.check((select count(*) from public.admin_startup_list()) = 2, 'list returns onboarded startups only');
+select tests.check(
+  (select total_count from public.admin_startup_list(p_limit => 1, p_offset => 1)) = 2
+  and (select count(*) from public.admin_startup_list(p_limit => 1, p_offset => 1)) = 1,
+  'list paginates and reports the total'
+);
+select tests.check((select name from public.admin_startup_list(p_search => 'gam')) = 'Gamma', 'search by startup name');
+select tests.check((select name from public.admin_startup_list(p_search => 'founder a ren')) = 'Alpha', 'search by founder name');
+select tests.check((select count(*) from public.admin_startup_list(p_search => '%')) = 0, 'search wildcards are escaped');
+select tests.check((select name from public.admin_startup_list(p_mentor => 'assigned')) = 'Alpha', 'filter mentor assigned');
+select tests.check((select name from public.admin_startup_list(p_mentor => 'unassigned')) = 'Gamma', 'filter mentor unassigned');
+select tests.check((select count(*) from public.admin_startup_list(p_stage => 'Idea')) = 0, 'filter by stage');
+select tests.check((select count(*) from public.admin_startup_list(p_activity => 'inactive')) = 0, 'filter by activity');
+select tests.check((select name from public.admin_startup_list(p_sort => 'growth') limit 1) = 'Gamma', 'sort by highest growth');
+select tests.check((select name from public.admin_startup_list(p_sort => 'oldest') limit 1) = 'Alpha', 'sort by oldest');
+select tests.check((select name from public.admin_startup_list(p_sort => 'newest') limit 1) = 'Gamma', 'sort by newest');
+select tests.check(
+  (select primary_metric_name = 'Users' and primary_metric_value = 150 and primary_metric_previous = 100
+     and growth_percent = 50 and mentor_name = 'Aziz' and activity_status = 'active' and founder_email = 'a@example.com'
+   from public.admin_startup_list(p_search => 'alpha')),
+  'list row carries primary metric, growth, mentor and activity'
+);
+select tests.expect_error($$select * from public.admin_startup_list(p_sort => 'random')$$, '22023', 'unknown sort rejected');
+select tests.expect_error($$select * from public.admin_startup_list(p_limit => 1000)$$, '22023', 'page size is capped');
+rollback;
+
+-- Primary metric tie-break: same day, most recently updated metric wins.
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+select tests.check(
+  (select primary_metric_name from public.admin_startup_list(p_search => 'gamma')) =
+  (select m.name from public.traction_metrics m where m.startup_id = :'gamma_id' and not m.is_archived
+   order by m.last_recorded_on desc nulls last, m.updated_at desc, m.created_at, m.id limit 1),
+  'primary metric is the most recently updated metric'
+);
+rollback;
+
+-- Assignment switching keeps history and one active assignment.
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+insert into public.mentors (name) values ('Bobur');
+select public.assign_mentor(:'alpha_id', (select id from public.mentors where name = 'Bobur'));
+select public.assign_mentor(:'alpha_id', (select id from public.mentors where name = 'Bobur'));
+commit;
+select tests.check(
+  (select count(*) from public.mentor_assignments where startup_id = :'alpha_id') = 2
+  and (select count(*) from public.mentor_assignments where startup_id = :'alpha_id' and ended_at is null) = 1
+  and (select m.name from public.mentor_assignments a join public.mentors m on m.id = a.mentor_id
+       where a.startup_id = :'alpha_id' and a.ended_at is null) = 'Bobur',
+  'assign_mentor ends the old assignment, starts the new one, and is idempotent'
+);
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+select tests.check(public.end_mentor_assignment(:'alpha_id'), 'end_mentor_assignment ends the active assignment');
+select tests.check(not public.end_mentor_assignment(:'alpha_id'), 'end_mentor_assignment reports nothing to end');
+select tests.check(public.delete_mentor(:'aziz_id') = 'archived', 'mentor with history is archived, not deleted');
+select tests.expect_error(format('select public.assign_mentor(%L, %L)', :'alpha_id', :'aziz_id'), 'P0002', 'archived mentors cannot be assigned');
+insert into public.mentors (name) values ('Unused');
+select tests.check(public.delete_mentor((select id from public.mentors where name = 'Unused')) = 'deleted', 'unused mentor is deleted');
+select public.assign_mentor(:'gamma_id', (select id from public.mentors where name = 'Bobur'));
+select tests.expect_error(
+  format('select public.delete_mentor(%L)', (select id from public.mentors where name = 'Bobur')),
+  'P0001', 'actively assigned mentor cannot be deleted'
+);
+commit;
+select tests.check(
+  (select not is_active from public.mentors where id = :'aziz_id')
+  and (select count(*) from public.mentor_assignments where mentor_id = :'aziz_id') = 1,
+  'archived mentor keeps assignment history'
+);
+
 \echo 'All RLS tests passed'

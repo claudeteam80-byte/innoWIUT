@@ -36,6 +36,7 @@ describe('route table', () => {
         '/admin/startups',
         '/admin/startups/:id',
         '/admin/mentors',
+        '/admin/meeting-requests',
         '/admin/settings',
         '*',
       ]),
