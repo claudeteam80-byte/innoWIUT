@@ -1,6 +1,6 @@
 import { paths } from '@/app/paths';
 import { withReturnTo } from '@/features/auth/return-to';
-import type { AppRole } from '@/types/database';
+import type { AppRole } from '@/types/app';
 
 export type AuthStatus = 'loading' | 'signed_out' | 'signed_in';
 export type ProfileStatus = 'idle' | 'loading' | 'ready' | 'error';

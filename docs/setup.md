@@ -25,12 +25,12 @@ With the Supabase CLI and Docker you can instead run the full local stack: `npx 
 ## Supabase project setup
 
 1. Create a Supabase project.
-2. Apply the migrations:
+2. Apply the migrations. Either through the Management API (works in the Claude Code cloud
+   environment, where the proxy injects the access token):
    ```bash
-   npx supabase login
-   npx supabase link --project-ref <project-ref>
-   npx supabase db push
+   npm run db:migrate          # applies pending supabase/migrations/*.sql and records them
    ```
+   or with a direct database connection: `npx supabase link --project-ref <ref> && npx supabase db push`.
 3. **Authentication → Sign In / Providers → Email**
    - Enable the email provider and sign ups.
    - **Confirm email: ON.**
@@ -40,14 +40,15 @@ With the Supabase CLI and Docker you can instead run the full local stack: `npx 
    - Site URL: the production URL, e.g. `https://<app>.vercel.app`.
    - Redirect URLs: `https://<app>.vercel.app/reset-password`, plus `http://localhost:5173/reset-password`
      and preview deployments (e.g. `https://*-<team>.vercel.app/reset-password`) if needed.
-5. **Authentication → Emails → Templates** — copy the bodies from:
+5. **Custom SMTP is required** for the templates below on the free tier
+   (Authentication → Emails → SMTP Settings). Then **Authentication → Emails → Templates** — copy the bodies from:
    - `supabase/templates/confirmation.html` → "Confirm signup" (sends the 6-digit `{{ .Token }}` code).
    - `supabase/templates/recovery.html` → "Reset password" (links to `/reset-password?token_hash=…&type=recovery`).
 
    Without these, Supabase's default templates send links instead of the code the app expects.
 6. Configure a custom SMTP provider before launch — Supabase's built-in email is rate-limited and meant for testing.
-7. Regenerate types after any schema change:
-   `npx supabase gen types typescript --linked --schema public > src/types/database.ts`
+7. Regenerate types after any schema change: `npm run gen:types` (writes `src/types/database.ts`;
+   hand-written aliases live in `src/types/app.ts`).
 
 ## Creating an admin (no public admin signup)
 

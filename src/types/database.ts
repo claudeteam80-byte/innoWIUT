@@ -1,320 +1,772 @@
-// Supabase database types for the `public` schema.
-//
-// Mirrors supabase/migrations/*. Once a Supabase project is linked, regenerate with:
-//   npx supabase gen types typescript --linked --schema public > src/types/database.ts
-
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-type Timestamps = {
-  created_at: string;
-  updated_at: string;
-};
-
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '12';
+    PostgrestVersion: '14.18';
   };
   public: {
     Tables: {
-      profiles: {
+      meeting_requests: {
         Row: {
+          admin_response: string | null;
+          created_at: string;
           id: string;
-          role: Database['public']['Enums']['app_role'];
-          email: string;
-          full_name: string;
-          phone: string | null;
-          linkedin_url: string | null;
-          notify_update_reminders: boolean;
-          notify_weekly_summary: boolean;
-        } & Timestamps;
-        Insert: never;
-        Update: {
-          full_name?: string;
-          phone?: string | null;
-          linkedin_url?: string | null;
-          notify_update_reminders?: boolean;
-          notify_weekly_summary?: boolean;
-        };
-        Relationships: [];
-      };
-      startups: {
-        Row: {
-          id: string;
-          owner_id: string;
-          name: string;
-          tagline: string | null;
-          description: string | null;
-          logo_path: string | null;
-          industry: string | null;
-          stage: string | null;
-          website: string | null;
-          founded_year: number | null;
-          team_size: number | null;
-          founder_role: string | null;
-          has_product: boolean | null;
-          has_users: boolean | null;
-          has_revenue: boolean | null;
-          main_goal: string | null;
-          biggest_challenge: string | null;
-          onboarding_completed_at: string | null;
-        } & Timestamps;
-        Insert: {
-          name: string;
-          tagline?: string | null;
-          description?: string | null;
-          logo_path?: string | null;
-          industry?: string | null;
-          stage?: string | null;
-          website?: string | null;
-          founded_year?: number | null;
-          team_size?: number | null;
-          founder_role?: string | null;
-          has_product?: boolean | null;
-          has_users?: boolean | null;
-          has_revenue?: boolean | null;
-          main_goal?: string | null;
-          biggest_challenge?: string | null;
-        };
-        Update: Partial<Database['public']['Tables']['startups']['Insert']>;
-        Relationships: [];
-      };
-      team_members: {
-        Row: {
-          id: string;
+          mentor_id: string | null;
+          message: string | null;
+          preferred_date: string | null;
+          reason: string;
+          requested_by: string | null;
           startup_id: string;
-          name: string;
-          role: string | null;
-          email: string | null;
-          linkedin_url: string | null;
-        } & Timestamps;
+          status: Database['public']['Enums']['meeting_request_status'];
+          updated_at: string;
+        };
         Insert: {
+          admin_response?: string | null;
+          created_at?: string;
+          id?: string;
+          mentor_id?: string | null;
+          message?: string | null;
+          preferred_date?: string | null;
+          reason: string;
+          requested_by?: string | null;
           startup_id: string;
-          name: string;
-          role?: string | null;
-          email?: string | null;
-          linkedin_url?: string | null;
+          status?: Database['public']['Enums']['meeting_request_status'];
+          updated_at?: string;
         };
         Update: {
-          name?: string;
-          role?: string | null;
-          email?: string | null;
-          linkedin_url?: string | null;
+          admin_response?: string | null;
+          created_at?: string;
+          id?: string;
+          mentor_id?: string | null;
+          message?: string | null;
+          preferred_date?: string | null;
+          reason?: string;
+          requested_by?: string | null;
+          startup_id?: string;
+          status?: Database['public']['Enums']['meeting_request_status'];
+          updated_at?: string;
         };
-        Relationships: [];
-      };
-      mentors: {
-        Row: {
-          id: string;
-          name: string;
-          title: string | null;
-          bio: string | null;
-          expertise: string[];
-          email: string | null;
-          contact_url: string | null;
-          photo_path: string | null;
-          is_active: boolean;
-          created_by: string | null;
-        } & Timestamps;
-        Insert: {
-          name: string;
-          title?: string | null;
-          bio?: string | null;
-          expertise?: string[];
-          email?: string | null;
-          contact_url?: string | null;
-          photo_path?: string | null;
-          is_active?: boolean;
-        };
-        Update: Partial<Database['public']['Tables']['mentors']['Insert']>;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'meeting_requests_mentor_id_fkey';
+            columns: ['mentor_id'];
+            isOneToOne: false;
+            referencedRelation: 'mentors';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'meeting_requests_requested_by_fkey';
+            columns: ['requested_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'meeting_requests_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'meeting_requests_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       mentor_assignments: {
         Row: {
-          id: string;
-          startup_id: string;
-          mentor_id: string;
-          assigned_by: string | null;
           assigned_at: string;
+          assigned_by: string | null;
           ended_at: string | null;
+          id: string;
+          mentor_id: string;
+          startup_id: string;
         };
         Insert: {
-          startup_id: string;
+          assigned_at?: string;
+          assigned_by?: string | null;
+          ended_at?: string | null;
+          id?: string;
           mentor_id: string;
+          startup_id: string;
         };
         Update: {
+          assigned_at?: string;
+          assigned_by?: string | null;
           ended_at?: string | null;
+          id?: string;
+          mentor_id?: string;
+          startup_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'mentor_assignments_assigned_by_fkey';
+            columns: ['assigned_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'mentor_assignments_mentor_id_fkey';
+            columns: ['mentor_id'];
+            isOneToOne: false;
+            referencedRelation: 'mentors';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'mentor_assignments_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'mentor_assignments_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       mentor_notes: {
         Row: {
-          id: string;
-          startup_id: string;
-          mentor_id: string | null;
           body: string;
-          note_date: string;
+          created_at: string;
           created_by: string | null;
-        } & Timestamps;
-        Insert: {
-          startup_id: string;
-          mentor_id?: string | null;
-          body: string;
-          note_date?: string;
-        };
-        Update: {
-          mentor_id?: string | null;
-          body?: string;
-          note_date?: string;
-        };
-        Relationships: [];
-      };
-      meeting_requests: {
-        Row: {
           id: string;
-          startup_id: string;
           mentor_id: string | null;
-          requested_by: string | null;
-          reason: string;
-          message: string | null;
-          preferred_date: string | null;
-          status: Database['public']['Enums']['meeting_request_status'];
-          admin_response: string | null;
-        } & Timestamps;
-        Insert: {
+          note_date: string;
           startup_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          body: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
           mentor_id?: string | null;
-          reason: string;
-          message?: string | null;
-          preferred_date?: string | null;
+          note_date?: string;
+          startup_id: string;
+          updated_at?: string;
         };
         Update: {
-          status?: Database['public']['Enums']['meeting_request_status'];
-          admin_response?: string | null;
+          body?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          mentor_id?: string | null;
+          note_date?: string;
+          startup_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'mentor_notes_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'mentor_notes_mentor_id_fkey';
+            columns: ['mentor_id'];
+            isOneToOne: false;
+            referencedRelation: 'mentors';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'mentor_notes_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'mentor_notes_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      mentors: {
+        Row: {
+          bio: string | null;
+          contact_url: string | null;
+          created_at: string;
+          created_by: string | null;
+          email: string | null;
+          expertise: string[];
+          id: string;
+          is_active: boolean;
+          name: string;
+          photo_path: string | null;
+          title: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          bio?: string | null;
+          contact_url?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string | null;
+          expertise?: string[];
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          photo_path?: string | null;
+          title?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          bio?: string | null;
+          contact_url?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string | null;
+          expertise?: string[];
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          photo_path?: string | null;
+          title?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'mentors_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      profiles: {
+        Row: {
+          created_at: string;
+          email: string;
+          full_name: string;
+          id: string;
+          linkedin_url: string | null;
+          notify_update_reminders: boolean;
+          notify_weekly_summary: boolean;
+          phone: string | null;
+          role: Database['public']['Enums']['app_role'];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+          full_name?: string;
+          id: string;
+          linkedin_url?: string | null;
+          notify_update_reminders?: boolean;
+          notify_weekly_summary?: boolean;
+          phone?: string | null;
+          role?: Database['public']['Enums']['app_role'];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+          full_name?: string;
+          id?: string;
+          linkedin_url?: string | null;
+          notify_update_reminders?: boolean;
+          notify_weekly_summary?: boolean;
+          phone?: string | null;
+          role?: Database['public']['Enums']['app_role'];
+          updated_at?: string;
         };
         Relationships: [];
       };
       startup_updates: {
         Row: {
-          id: string;
-          startup_id: string;
           author_id: string | null;
-          title: string;
-          summary: string | null;
-          highlights: string[];
           challenge: string | null;
-          next_steps: string | null;
+          created_at: string;
+          highlights: string[];
+          id: string;
           image_path: string | null;
           link_url: string | null;
-          status: Database['public']['Enums']['update_status'];
-          update_date: string;
+          next_steps: string | null;
           published_at: string | null;
-        } & Timestamps;
-        Insert: {
           startup_id: string;
+          status: Database['public']['Enums']['update_status'];
+          summary: string | null;
           title: string;
-          summary?: string | null;
-          highlights?: string[];
+          update_date: string;
+          updated_at: string;
+        };
+        Insert: {
+          author_id?: string | null;
           challenge?: string | null;
-          next_steps?: string | null;
+          created_at?: string;
+          highlights?: string[];
+          id?: string;
           image_path?: string | null;
           link_url?: string | null;
+          next_steps?: string | null;
+          published_at?: string | null;
+          startup_id: string;
           status?: Database['public']['Enums']['update_status'];
+          summary?: string | null;
+          title: string;
           update_date?: string;
-        };
-        Update: Partial<
-          Omit<Database['public']['Tables']['startup_updates']['Insert'], 'startup_id'>
-        >;
-        Relationships: [];
-      };
-      traction_metrics: {
-        Row: {
-          id: string;
-          startup_id: string;
-          name: string;
-          unit: Database['public']['Enums']['metric_unit'];
-          currency: Database['public']['Enums']['currency_code'] | null;
-          target: number | null;
-          note: string | null;
-          is_archived: boolean;
-          current_value: number | null;
-          previous_value: number | null;
-          last_recorded_on: string | null;
-        } & Timestamps;
-        Insert: {
-          startup_id: string;
-          name: string;
-          unit?: Database['public']['Enums']['metric_unit'];
-          currency?: Database['public']['Enums']['currency_code'] | null;
-          target?: number | null;
-          note?: string | null;
+          updated_at?: string;
         };
         Update: {
-          name?: string;
-          unit?: Database['public']['Enums']['metric_unit'];
-          currency?: Database['public']['Enums']['currency_code'] | null;
-          target?: number | null;
-          note?: string | null;
-          is_archived?: boolean;
+          author_id?: string | null;
+          challenge?: string | null;
+          created_at?: string;
+          highlights?: string[];
+          id?: string;
+          image_path?: string | null;
+          link_url?: string | null;
+          next_steps?: string | null;
+          published_at?: string | null;
+          startup_id?: string;
+          status?: Database['public']['Enums']['update_status'];
+          summary?: string | null;
+          title?: string;
+          update_date?: string;
+          updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'startup_updates_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'startup_updates_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'startup_updates_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      startups: {
+        Row: {
+          biggest_challenge: string | null;
+          created_at: string;
+          description: string | null;
+          founded_year: number | null;
+          founder_role: string | null;
+          has_product: boolean | null;
+          has_revenue: boolean | null;
+          has_users: boolean | null;
+          id: string;
+          industry: string | null;
+          logo_path: string | null;
+          main_goal: string | null;
+          name: string;
+          onboarding_completed_at: string | null;
+          owner_id: string;
+          stage: string | null;
+          tagline: string | null;
+          team_size: number | null;
+          updated_at: string;
+          website: string | null;
+        };
+        Insert: {
+          biggest_challenge?: string | null;
+          created_at?: string;
+          description?: string | null;
+          founded_year?: number | null;
+          founder_role?: string | null;
+          has_product?: boolean | null;
+          has_revenue?: boolean | null;
+          has_users?: boolean | null;
+          id?: string;
+          industry?: string | null;
+          logo_path?: string | null;
+          main_goal?: string | null;
+          name: string;
+          onboarding_completed_at?: string | null;
+          owner_id?: string;
+          stage?: string | null;
+          tagline?: string | null;
+          team_size?: number | null;
+          updated_at?: string;
+          website?: string | null;
+        };
+        Update: {
+          biggest_challenge?: string | null;
+          created_at?: string;
+          description?: string | null;
+          founded_year?: number | null;
+          founder_role?: string | null;
+          has_product?: boolean | null;
+          has_revenue?: boolean | null;
+          has_users?: boolean | null;
+          id?: string;
+          industry?: string | null;
+          logo_path?: string | null;
+          main_goal?: string | null;
+          name?: string;
+          onboarding_completed_at?: string | null;
+          owner_id?: string;
+          stage?: string | null;
+          tagline?: string | null;
+          team_size?: number | null;
+          updated_at?: string;
+          website?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'startups_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: true;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      team_members: {
+        Row: {
+          created_at: string;
+          email: string | null;
+          id: string;
+          linkedin_url: string | null;
+          name: string;
+          role: string | null;
+          startup_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          linkedin_url?: string | null;
+          name: string;
+          role?: string | null;
+          startup_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          linkedin_url?: string | null;
+          name?: string;
+          role?: string | null;
+          startup_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'team_members_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'team_members_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       traction_entries: {
         Row: {
+          created_at: string;
+          created_by: string | null;
           id: string;
           metric_id: string;
+          note: string | null;
+          recorded_on: string;
           startup_id: string;
           value: number;
-          recorded_on: string;
-          note: string | null;
-          created_by: string | null;
-          created_at: string;
         };
         Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
           metric_id: string;
-          value: number;
-          recorded_on?: string;
           note?: string | null;
+          recorded_on?: string;
+          startup_id: string;
+          value: number;
         };
-        Update: never;
-        Relationships: [];
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          metric_id?: string;
+          note?: string | null;
+          recorded_on?: string;
+          startup_id?: string;
+          value?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'traction_entries_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'traction_entries_metric_id_fkey';
+            columns: ['metric_id'];
+            isOneToOne: false;
+            referencedRelation: 'traction_metrics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'traction_entries_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'traction_entries_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      traction_metrics: {
+        Row: {
+          created_at: string;
+          currency: Database['public']['Enums']['currency_code'] | null;
+          current_value: number | null;
+          id: string;
+          is_archived: boolean;
+          last_recorded_on: string | null;
+          name: string;
+          note: string | null;
+          previous_value: number | null;
+          startup_id: string;
+          target: number | null;
+          unit: Database['public']['Enums']['metric_unit'];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          currency?: Database['public']['Enums']['currency_code'] | null;
+          current_value?: number | null;
+          id?: string;
+          is_archived?: boolean;
+          last_recorded_on?: string | null;
+          name: string;
+          note?: string | null;
+          previous_value?: number | null;
+          startup_id: string;
+          target?: number | null;
+          unit?: Database['public']['Enums']['metric_unit'];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          currency?: Database['public']['Enums']['currency_code'] | null;
+          current_value?: number | null;
+          id?: string;
+          is_archived?: boolean;
+          last_recorded_on?: string | null;
+          name?: string;
+          note?: string | null;
+          previous_value?: number | null;
+          startup_id?: string;
+          target?: number | null;
+          unit?: Database['public']['Enums']['metric_unit'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'traction_metrics_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'traction_metrics_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: {
       startup_activity: {
         Row: {
-          startup_id: string;
-          last_update_on: string | null;
+          activity_status: string | null;
+          days_since_activity: number | null;
+          last_active_on: string | null;
           last_traction_on: string | null;
-          last_active_on: string;
-          days_since_activity: number;
-          activity_status: 'active' | 'needs_update' | 'inactive';
+          last_update_on: string | null;
+          startup_id: string | null;
         };
         Relationships: [];
       };
     };
     Functions: {
       activity_status: {
-        Args: { days_since_activity: number | null };
+        Args: { days_since_activity: number };
         Returns: string;
       };
     };
     Enums: {
       app_role: 'founder' | 'admin';
-      metric_unit: 'number' | 'currency' | 'percent';
       currency_code: 'USD' | 'UZS';
-      update_status: 'draft' | 'published';
       meeting_request_status: 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
+      metric_unit: 'number' | 'currency' | 'percent';
+      update_status: 'draft' | 'published';
     };
-    CompositeTypes: Record<string, never>;
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 };
 
-type PublicSchema = Database['public'];
+type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>;
 
-export type Tables<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T]['Row'];
-export type Enums<T extends keyof PublicSchema['Enums']> = PublicSchema['Enums'][T];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>];
 
-export type AppRole = Enums<'app_role'>;
-export type Profile = Tables<'profiles'>;
-export type MetricUnit = Enums<'metric_unit'>;
-export type CurrencyCode = Enums<'currency_code'>;
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    keyof DefaultSchema['Tables'] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    keyof DefaultSchema['Enums'] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    keyof DefaultSchema['CompositeTypes'] | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ['founder', 'admin'],
+      currency_code: ['USD', 'UZS'],
+      meeting_request_status: ['requested', 'confirmed', 'completed', 'declined', 'cancelled'],
+      metric_unit: ['number', 'currency', 'percent'],
+      update_status: ['draft', 'published'],
+    },
+  },
+} as const;

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session, User } from '@supabase/supabase-js';
 import { vi } from 'vitest';
 import { AuthContext, type AuthContextValue } from '@/features/auth/auth-context';
-import type { AppRole, Profile } from '@/types/database';
+import type { AppRole, Profile } from '@/types/app';
 
 export function makeProfile(role: AppRole, overrides: Partial<Profile> = {}): Profile {
   return {

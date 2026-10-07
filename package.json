@@ -14,7 +14,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "bash supabase/tests/run-local.sh"
+    "test:db": "bash supabase/tests/run-local.sh",
+    "gen:types": "node scripts/gen-types.mjs",
+    "db:migrate": "NODE_USE_ENV_PROXY=1 node scripts/apply-migrations.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -46,6 +48,7 @@
     "globals": "^17.13.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.9",
+    "supabase": "^2.120.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.71.1",

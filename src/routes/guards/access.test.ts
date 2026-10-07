@@ -7,7 +7,7 @@ import {
   type AuthStatus,
   type ProfileStatus,
 } from './access';
-import type { AppRole } from '@/types/database';
+import type { AppRole } from '@/types/app';
 
 const location = { pathname: '/founder/traction', search: '?tab=history' };
 

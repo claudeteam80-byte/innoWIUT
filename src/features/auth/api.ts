@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { paths } from '@/app/paths';
-import type { Profile } from '@/types/database';
+import type { Profile } from '@/types/app';
 
 export async function signInWithPassword(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });

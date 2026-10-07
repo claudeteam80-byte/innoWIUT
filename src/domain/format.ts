@@ -1,4 +1,4 @@
-import type { CurrencyCode, MetricUnit } from '@/types/database';
+import type { CurrencyCode, MetricUnit } from '@/types/app';
 
 export const SUPPORTED_CURRENCIES: readonly CurrencyCode[] = ['USD', 'UZS'];
 

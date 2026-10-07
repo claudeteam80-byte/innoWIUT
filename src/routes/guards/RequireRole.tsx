@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { AccountErrorState } from '@/components/shared/AccountErrorState';
 import { FullPageSpinner } from '@/components/shared/FullPageSpinner';
 import { useAuth } from '@/features/auth/useAuth';
-import type { AppRole } from '@/types/database';
+import type { AppRole } from '@/types/app';
 import { resolveRoleAccess } from './access';
 
 /**
