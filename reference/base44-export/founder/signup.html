@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<script>
+   (function () {
+  var proto = XMLHttpRequest.prototype;
+  var open = proto.open, setRequestHeader = proto.setRequestHeader, send = proto.send;
+  var TOKEN_KEY = 'base44_access_token';
+  var storedTokenHeader = function () {
+    try { return 'Bearer ' + localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
+  };
+  var forgetStoredToken = function () {
+    try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('token'); } catch (e) {}
+  };
+
+  proto.open = function (method, url) {
+    this.__b44IsAuthCheck = /\/entities\/User\/me(\?|$)/.test(url);
+    return open.apply(this, arguments);
+  };
+
+  proto.setRequestHeader = function (name, value) {
+    if (this.__b44IsAuthCheck && name.toLowerCase() === 'authorization' && value === storedTokenHeader()) {
+      this.__b44SentToken = value;
+    }
+    return setRequestHeader.call(this, name, value);
+  };
+
+  proto.send = function () {
+    this.addEventListener('loadend', function () {
+      var rejectedTokenStillStored = this.status === 401 && this.__b44SentToken === storedTokenHeader();
+      if (rejectedTokenStillStored) forgetStoredToken();
+    });
+    return send.apply(this, arguments);
+  };
+})();
+  </script>
+<meta charset="utf-8"/>
+<link href="../assets/_external/media.base44.com/images/public/6ac61171e6e6f2c9dfd6fde8/265e1e5f8_logo.png" rel="icon" type="image/svg+xml"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="/manifest.json" rel="manifest"/>
+<title>
+   innoWIUT · Founder Platform
+  </title>
+<meta content="innoWIUT Founder Platform — track your startup journey, publish progress updates and stay connected with the innoWIUT ecosystem." name="description"/>
+<meta content="#17233B" name="theme-color"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script crossorigin="" src="../assets/index-BAJT5jSk.js" type="module">
+</script>
+<link crossorigin="" href="../assets/index-CyQLRf1E.css" rel="stylesheet"/>
+<script type="module">
+   if (window.self === window.top) {
+  let lastPath = "";
+  function getPageNameFromPath(path) {
+    const segments = path.split("/").filter(Boolean);
+    return segments[0] || null;
+  }
+  function trackPageView() {
+    const path = window.location.pathname;
+    if (path === lastPath) return;
+    lastPath = path;
+    const pageName = getPageNameFromPath(path) || "home";
+    const appId = "6ac61171e6e6f2c9dfd6fde8";
+    if (!appId) return;
+    fetch(`/api/app-logs/${appId}/log-user-in-app/${pageName}`, {
+      method: "POST",
+    }).catch(() => {});
+  }
+  const originalPushState = history.pushState.bind(history);
+  history.pushState = function (...args) {
+    originalPushState(...args);
+    trackPageView();
+  };
+  const originalReplaceState = history.replaceState.bind(history);
+  history.replaceState = function (...args) {
+    originalReplaceState(...args);
+    trackPageView();
+  };
+  window.addEventListener("popstate", trackPageView);
+  trackPageView();
+}
+  </script>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="black" name="apple-mobile-web-app-status-bar-style"/>
+<meta content="innoWIUT Hub" name="apple-mobile-web-app-title"/>
+<script async="true" data-app-id="6ac61171e6e6f2c9dfd6fde8" data-platform-url="https://app.base44.com" src="../static/js/badge.js">
+</script>
+<style>
+      @keyframes badge-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .badge-spinner {
+        animation: badge-spin 1s linear infinite;
+      }
+      @keyframes base44-fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes base44-scale-in {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style></head>
+<body>
+<div id="root"><div class="flex min-h-screen bg-white"><div class="relative hidden w-[46%] flex-col justify-between overflow-hidden bg-gradient-to-b from-[#E9F0FB] via-[#F6FAFE] to-white p-12 lg:flex xl:p-16"><div class="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#264F9D]/15 blur-[100px]"></div><div class="pointer-events-none absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-[#358A7C]/10 blur-[110px]"></div><div class="pointer-events-none absolute inset-0 opacity-[0.05]" style="background-image: linear-gradient(rgb(38, 79, 157) 1px, transparent 1px), linear-gradient(90deg, rgb(38, 79, 157) 1px, transparent 1px); background-size: 56px 56px;"></div><div class="relative flex items-center gap-3"><div class="grid h-10 w-10 place-items-center rounded-xl bg-[#264F9D] text-[14px] font-bold tracking-tight text-white">iW</div><div><p class="text-[15px] font-semibold leading-none text-[#1D2939]">innoWIUT</p><p class="mt-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-[#264F9D]">Founder Platform</p></div></div><div class="relative max-w-[460px]"><span class="inline-flex items-center gap-1.5 rounded-full border border-[#D7DEEA] bg-white px-3 py-1 text-[11px] font-medium text-[#264F9D]"><svg class="lucide lucide-rocket h-3 w-3" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>Your startup workspace</span><h1 class="mt-6 text-[38px] font-semibold leading-[1.1] tracking-tight text-[#17233B] xl:text-[44px]">Track your startup.<br/>Share progress.<br/><span class="text-[#264F9D]">Stay connected with innoWIUT.</span></h1><div class="mt-10 rounded-2xl border border-[#D7DEEA] bg-white p-5 shadow-[0_30px_70px_-50px_rgba(38,79,157,0.9)]"><div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2 text-[#667085]"><svg class="lucide lucide-users h-3.5 w-3.5" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span class="text-[10.5px] font-semibold uppercase tracking-[0.16em]">Active users</span></div><span class="inline-flex items-center gap-1 text-[12px] font-medium text-[#26693A]"><svg class="lucide lucide-trending-up h-3.5 w-3.5" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>+18% this month</span></div><p class="mt-3 text-[30px] font-semibold leading-none text-[#1D2939]">640</p><div class="mt-4 flex items-end gap-1.5"><span class="w-3 rounded-sm bg-[#264F9D]/25 h-4"></span><span class="w-3 rounded-sm bg-[#264F9D]/25 h-7"></span><span class="w-3 rounded-sm bg-[#264F9D]/25 h-5"></span><span class="w-3 rounded-sm bg-[#264F9D]/25 h-9"></span><span class="w-3 rounded-sm bg-[#264F9D]/25 h-11"></span><span class="w-3 rounded-sm bg-[#264F9D]/25 h-14"></span><span class="w-3 rounded-sm bg-[#264F9D] h-16"></span></div></div></div><p class="relative text-[12px] text-[#667085]">innoWIUT · Westminster International University in Tashkent</p></div><div class="flex w-full flex-col justify-center px-6 py-12 sm:px-10 lg:w-[54%] lg:px-16 xl:px-24"><div class="mx-auto w-full max-w-[420px]"><div class="flex items-center gap-3 mb-10 lg:hidden"><div class="grid h-9 w-9 place-items-center rounded-lg text-[13px] font-bold tracking-tight bg-[#264F9D] text-white">iW</div><div><p class="text-[14px] font-semibold leading-none text-[#1D2939]">innoWIUT</p><p class="mt-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#667085]">Founder Platform</p></div></div><p class="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#264F9D]">Founder Platform</p><h1 class="mt-3 text-[28px] font-semibold tracking-tight text-[#1D2939]">Create your Founder Account</h1><p class="mt-2 text-[13.5px] text-[#667085]">Start tracking your startup with innoWIUT.</p><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 border bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground px-4 py-2 mt-7 h-11 w-full border-[#E4E7EC] text-[13.5px] font-medium text-[#1D2939]" type="button"><svg aria-hidden="true" class="mr-2 h-4 w-4" viewbox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path></svg>Continue with Google</button><div class="relative my-7"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-[#E4E7EC]"></div></div><div class="relative flex justify-center"><span class="bg-white px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-[#98A2B3]">or</span></div></div><form class="space-y-5"><div class="space-y-1.5"><label class="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[13px] font-medium text-[#1D2939]" for="fullName">Full Name</label><input class="flex w-full rounded-md border px-3 py-1 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-[#E4E7EC] bg-white text-[13px] shadow-none placeholder:text-[#98A2B3] focus-visible:border-[#264F9D] focus-visible:ring-1 focus-visible:ring-[#264F9D]" id="fullName" placeholder="Yodgor Karimov" required="" value=""/></div><div class="space-y-1.5"><label class="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[13px] font-medium text-[#1D2939]" for="email">Email</label><input autocomplete="email" class="flex w-full rounded-md border px-3 py-1 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-[#E4E7EC] bg-white text-[13px] shadow-none placeholder:text-[#98A2B3] focus-visible:border-[#264F9D] focus-visible:ring-1 focus-visible:ring-[#264F9D]" id="email" placeholder="you@wiut.uz" required="" type="email" value=""/></div><div class="space-y-1.5"><label class="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[13px] font-medium text-[#1D2939]" for="password">Password</label><input autocomplete="new-password" class="flex w-full rounded-md border px-3 py-1 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-[#E4E7EC] bg-white text-[13px] shadow-none placeholder:text-[#98A2B3] focus-visible:border-[#264F9D] focus-visible:ring-1 focus-visible:ring-[#264F9D]" id="password" placeholder="••••••••" required="" type="password" value=""/></div><div class="space-y-1.5"><label class="peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-[13px] font-medium text-[#1D2939]" for="confirm">Confirm Password</label><input autocomplete="new-password" class="flex w-full rounded-md border px-3 py-1 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 border-[#E4E7EC] bg-white text-[13px] shadow-none placeholder:text-[#98A2B3] focus-visible:border-[#264F9D] focus-visible:ring-1 focus-visible:ring-[#264F9D]" id="confirm" placeholder="••••••••" required="" type="password" value=""/></div><label class="flex cursor-pointer items-start gap-2.5"><button aria-checked="false" class="peer h-4 w-4 shrink-0 rounded-sm border shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:text-primary-foreground mt-0.5 border-[#D7DEEA] data-[state=checked]:border-[#264F9D] data-[state=checked]:bg-[#264F9D]" data-state="unchecked" role="checkbox" type="button" value="on"></button><input aria-hidden="true" style="position: absolute; pointer-events: none; opacity: 0; margin: 0px; transform: translateX(-100%); width: 16px; height: 16px;" tabindex="-1" type="checkbox" value="on"/><span class="text-[12.5px] leading-relaxed text-[#667085]">I agree to the Terms and Privacy Policy</span></label><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 text-primary-foreground shadow px-4 py-2 h-11 w-full bg-[#264F9D] text-[13.5px] font-medium hover:bg-[#1D3E7C]" type="submit">Create Founder Account</button></form><p class="mt-8 text-center text-[13px] text-[#667085]">Already have an account? <a class="font-semibold text-[#264F9D] hover:underline" href="login.html">Sign In</a></p><p class="mt-6 text-center text-[11.5px] text-[#98A2B3]">innoWIUT staff? <a class="font-medium text-[#667085] hover:text-[#264F9D] hover:underline" href="../admin/login.html">Admin access</a></p></div></div></div><div aria-label="Notifications (F8)" role="region" style="pointer-events: none;" tabindex="-1"><ol class="fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]" tabindex="-1"></ol></div></div>
+<div dir="ltr" id="base44-edit-badge" style='position: fixed; z-index: 999999; bottom: 16px; right: 16px; display: flex; align-items: center; gap: 8px; background-color: rgb(0, 0, 0); color: rgb(255, 255, 255); padding: 8px 12px; border-radius: 6px; box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px; cursor: pointer; transition: box-shadow 0.2s; border: 1px solid rgb(38, 38, 38); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px;'>
+<img alt="base44" src="../assets/_external/media.base44.com/images/public/builder-assets/symbol-orange.png" style="width: 20px; height: 20px;"/>
+<span style="white-space: nowrap; font-size: 12px;">
+<span id="badge-content">
+<div style="display: flex; align-items: center; gap: 6px; justify-content: center; font-size: 14px;">
+<span>Edit with </span>
+<span style="margin-bottom: 2px;"><img alt="Base44" height="18" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARAAAABECAMAAAB+vJpyAAAACXBIWXMAACxLAAAsSwGlPZapAAAAAXNSR0IArs4c6QAAAEVQTFRFAAAA////////////////////////////////////////////////////////////////////////////////////////Up1zwgAAABZ0Uk5TABAgMEBQX2BvcH+Aj5CfoK+wv8/f741pbhwAAAVHSURBVHja7ZvtbuwoDECNQ5ZNSZgsAd7/Ufeq6i0Ex3Y6I1WJNOdv3RlyGvAHKrx58+bNmzdvfg0v4OwAN8P5BnH16FsM/KUoxNnCffi3tDgQCKUFqxCd5OAmYCFCdHVUiE5CuAXptBDMohCdD7gBczktJBVVyP2NuNLhBHWaEB0LFwcTESKoe11IMnBtYulxvDpdiI6HS/NRCE5UpwvJqaX05ItnXIoT1elCPOwY3HqfU8QkTQhVpwtRNtsE1yUUTQhVpwtR6pdwi5I9KUJCeUUI+FKJcFUwVx+eCOHULVETomy4dIOSPSMRwqqDZ4QAEXLtjDuBLCQ1Dp4TkoQtg25ev/Jziqu30EAD81fcZIHFjDVwdginsO0xR4Rw6jw8JySXb/6DFvORSs/qgEIDU7CHNlzsAyf8UcmeUBYytn/d54QYJu1iODk7MXMuB8SBHneHgQF/kHFHIEJYdU8KsaUyCIuvzAYabBbjKsNWTimWd4EsZO1+pAqR9ad2EQKbOReYEFTD+uQB2wUSIZy6BX4shD6Q0x6THr5O6Z9PfmI4V7IjEcKqM88JMfNh0h2KwlSTvkjQfOjvyEyWT4Rw6nQhwba4OZaGjMz4bQuLDzHvYs1BlZw+42i7SA3nLcat7Bj1Sc8KVAirThWiM7a5q/J9oeESedewlT0cxcWDdusrJaNLRLGccRkhVF2E14Vke9wdWag8+u3lDncjbqVi+gFnsjVwUadTkTw8FUJLdnxdSESoZG6ZW/f5ayuoYvJ+ydhlqIonr4iQNmQhpAc+LUQtjpCdoTk2zQdo8XujgZ/bRuKeTRusEKruJSFUiWWbG9N968YEDumbpeu3+N40itMrBFGIJerOC9EzH35j2M44dN9nz7ZmfG1phJrRAyuEqntJCNneEtj1ges+dzAsjLY+ozl+0hOBF0LV6UJeN4LjFLbc59OptOQ4j4OYKbLoeOEnPcgJEdXpQrawY41Zr6CNneaYS0+sm0Gz0k7/KN1Lx6QNUQgWRt0TvYx9lBZLhzlCO1O/kFqx5B1QSVzGDSAKMaw6XYh265daG1Hv72xhSQGBjdGFjCRtsEJmou5pIbSutqRbF4WA1/OWLWdhGzVRiCPqXhBCVrzU6lsVohvZ8FkhWE7hyAo0BCGV3L+2Qy5nhYBLYt66pZC1VAzrI62LOxAC+BD0zbcU8igV/D5mK3kLkzXwh+N8b9yaCoMFvLmQbroVlxHhCyqkMox+3QplAUN+ieOSWwb3N1cWGtRnM3Z6dFZy+3npJkJSqRgYSc6R+2Cl2MPWN95CiN3/wsKvP+yFYMWwxZ6FSVoAVsxVhHQz0JV9C3AfCCv7Lk3MqZqN8JH2GkJM2J+BEFkhWyek2Rob+5x2Vy/O/IwwQwvyLHshBnmaFVv8RBNiPnLf3a1ctx5KJ2Ri20K7ux4d2QuY4dRllVS6S+ile/Q7wpoO+qsHc/m9kUrV0GtL6q5uSmrkn0yU/pqQ83tyOlr9MOeD0j0eX1mbWZib1EAbySzmakISuWXLq3duCunMgGibLP5hnDO5L166cUnwYe0M41WE0Nc+ChFkQKSQajcvM8H1hORBm+gkR+8oZbBWJiIeriOEHosLa8xWIcKDkgWrgR6uJ2Qx9VDcGB9AhIgPmh1UzEOKu5YQ2sUtzPUvFQLgtftibZS0IlxLSI6TASCLp8aOhQA+EqtYVZKDBfhdIVFgDd4NBo5wTV5Mi4VPhviXuWtwt04xwiF2aQNTcAZ+jIvfaDKXGmrgdYZx8t670ZyMdv4Pk7MIEsaO02fcYN7/Zf7mzfX5H+WZeZXgxfH6AAAAAElFTkSuQmCC" width="56"/></span>
+</div>
+</span>
+</span>
+<button aria-label="Close badge" id="badge-close" style="
+          padding: 2px;
+          margin-left: 2px;
+          border-radius: 9999px;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+<svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></svg>
+</button>
+</div></body></html>

@@ -1,0 +1,29 @@
+{
+  "start_url": "https://inno-launch-pad.base44.app",
+  "root_path_prefix": "",
+  "pages": {
+    "https://inno-launch-pad.base44.app": "index.html",
+    "https://inno-launch-pad.base44.app/founder/login": "founder/login.html",
+    "https://inno-launch-pad.base44.app/admin/login": "admin/login.html",
+    "https://inno-launch-pad.base44.app/forgot-password": "forgot-password.html",
+    "https://inno-launch-pad.base44.app/founder/signup": "founder/signup.html"
+  },
+  "assets": {
+    "https://media.base44.com/images/public/builder-assets/symbol-orange.png": "assets/_external/media.base44.com/images/public/builder-assets/symbol-orange.png",
+    "https://inno-launch-pad.base44.app/static/js/badge.js": "static/js/badge.js",
+    "https://inno-launch-pad.base44.app/api/apps/manifests/6ac61171e6e6f2c9dfd6fde8/manifest.json": "api/apps/manifests/6ac61171e6e6f2c9dfd6fde8/manifest.json",
+    "https://inno-launch-pad.base44.app/manifest.json": "manifest.json",
+    "https://inno-launch-pad.base44.app/assets/index-CyQLRf1E.css": "assets/index-CyQLRf1E.css",
+    "https://media.base44.com/images/public/6ac61171e6e6f2c9dfd6fde8/265e1e5f8_logo.png": "assets/_external/media.base44.com/images/public/6ac61171e6e6f2c9dfd6fde8/265e1e5f8_logo.png",
+    "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2": "assets/_external/fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+    "https://inno-launch-pad.base44.app/assets/index-BAJT5jSk.js": "assets/index-BAJT5jSk.js",
+    "https://inno-launch-pad.base44.app/api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/home": "api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/home.json",
+    "https://inno-launch-pad.base44.app/api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/auth": "api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/auth.json",
+    "https://inno-launch-pad.base44.app/api/apps/6ac61171e6e6f2c9dfd6fde8/analytics/track/batch": "api/apps/6ac61171e6e6f2c9dfd6fde8/analytics/track/batch.json",
+    "https://inno-launch-pad.base44.app/api/apps/public/prod/public-settings/by-id/6ac61171e6e6f2c9dfd6fde8": "api/apps/public/prod/public-settings/by-id/6ac61171e6e6f2c9dfd6fde8.json",
+    "https://inno-launch-pad.base44.app/api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/founder": "api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/founder.json",
+    "https://inno-launch-pad.base44.app/api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/admin": "api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/admin.json",
+    "https://inno-launch-pad.base44.app/api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/forgot-password": "api/app-logs/6ac61171e6e6f2c9dfd6fde8/log-user-in-app/forgot-password.json"
+  },
+  "created_at": 1791389379.024061
+}
