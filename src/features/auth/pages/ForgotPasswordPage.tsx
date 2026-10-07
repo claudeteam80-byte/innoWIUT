@@ -7,7 +7,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { requestPasswordReset } from '../api';
-import { AuthHeading, CardAuthLayout } from '../components/AuthLayout';
+import { AdminAuthLayout, AuthHeading, CardAuthLayout } from '../components/AuthLayout';
 import { getAuthErrorCode, getAuthErrorMessage, NETWORK_ERROR_MESSAGE } from '../errors';
 import { forgotPasswordSchema } from '../schemas';
 
@@ -47,8 +47,9 @@ export function ForgotPasswordPage() {
     }
   });
 
+  const Layout = isAdmin ? AdminAuthLayout : CardAuthLayout;
   return (
-    <CardAuthLayout eyebrow={isAdmin ? 'Administration' : 'Founder Platform'}>
+    <Layout eyebrow="FounderTrack · Founder Platform">
       <AuthHeading title="Reset password" subtitle="We'll send you a link to reset it." />
       {sentTo ? (
         <Alert tone="success">
@@ -75,6 +76,6 @@ export function ForgotPasswordPage() {
           Back to sign in
         </Link>
       </p>
-    </CardAuthLayout>
+    </Layout>
   );
 }

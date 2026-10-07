@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +11,7 @@ import { TextField } from '@/components/ui/TextField';
 import { isAdminRole } from '@/routes/guards/access';
 import { useSignedInRedirect } from '@/routes/guards/useSignedInRedirect';
 import { fetchProfile, signInWithPassword, signOutLocal } from '../api';
-import { AuthHeading, CardAuthLayout } from '../components/AuthLayout';
+import { AdminAuthLayout, AuthHeading } from '../components/AuthLayout';
 import { ADMIN_ACCESS_DENIED_MESSAGE, getAuthErrorMessage } from '../errors';
 import { authKeys } from '../query-keys';
 import { sanitizeReturnTo } from '../return-to';
@@ -58,15 +58,9 @@ export function AdminLoginPage() {
   if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   return (
-    <CardAuthLayout eyebrow="Administration">
-      <Link
-        to={paths.authChoice}
-        className="mb-5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-muted hover:text-ink"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Access options
-      </Link>
+    <AdminAuthLayout>
       <AuthHeading
-        eyebrow="Administration"
+        eyebrow="innoWIUT staff"
         title="innoWIUT Admin Access"
         subtitle="Manage startup activity and monitor ecosystem progress."
       />
@@ -107,6 +101,6 @@ export function AdminLoginPage() {
           are created internally by authorized innoWIUT staff. There is no public admin sign up.
         </p>
       </div>
-    </CardAuthLayout>
+    </AdminAuthLayout>
   );
 }

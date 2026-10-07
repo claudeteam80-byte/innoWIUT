@@ -13,7 +13,7 @@ interface StatCardProps {
 export function StatCard({ label, value, meta, icon: Icon, loading }: StatCardProps) {
   return (
     <article className="flex flex-col rounded-xl border border-line bg-white p-5 shadow-card">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex min-h-10 items-start justify-between gap-3">
         <h3 className="text-[12.5px] font-medium text-muted">{label}</h3>
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary-soft text-primary">
           <Icon className="h-4 w-4" aria-hidden="true" />

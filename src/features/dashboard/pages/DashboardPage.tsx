@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDocumentTitle } from '@/lib/document-title';
 import { Link } from 'react-router';
 import { ArrowRight, FileText, Globe, Plus, RefreshCw, Target, UserRound } from 'lucide-react';
 import { paths } from '@/app/paths';
@@ -30,6 +31,7 @@ import { firstName } from '@/lib/text';
 import { publicFileUrl } from '@/lib/storage';
 
 export function DashboardPage() {
+  useDocumentTitle('Dashboard');
   const { profile } = useAuth();
   const startup = useMyStartup();
   const startupId = startup.data?.id;

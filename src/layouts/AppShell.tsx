@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { LogOut, Menu, X, type LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/shared/BrandMark';
@@ -31,6 +31,20 @@ export function AppShell({ navItems, workspaceLabel, signedOutPath, navLabel }: 
 
   const displayName = profile?.full_name || user?.email || '';
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', close);
+    return () => {
+      document.body.style.overflow = overflow;
+      window.removeEventListener('keydown', close);
+    };
+  }, [mobileOpen]);
+
   async function handleSignOut() {
     setSigningOut(true);
     try {
@@ -47,7 +61,7 @@ export function AppShell({ navItems, workspaceLabel, signedOutPath, navLabel }: 
         <button
           type="button"
           onClick={() => setMobileOpen(false)}
-          className="rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:hidden"
+          className="grid h-10 w-10 place-items-center rounded-md text-white/60 hover:bg-white/10 hover:text-white lg:hidden"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
@@ -114,10 +128,10 @@ export function AppShell({ navItems, workspaceLabel, signedOutPath, navLabel }: 
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-2 text-muted hover:bg-canvas hover:text-ink lg:hidden"
+            className="-ml-2 grid h-10 w-10 place-items-center rounded-md text-muted hover:bg-canvas hover:text-ink lg:hidden"
             aria-label="Open menu"
           >
-            <Menu className="h-4 w-4" />
+            <Menu className="h-5 w-5" />
           </button>
           <span className="text-[13px] font-semibold text-ink">innoWIUT</span>
           <span className="h-4 w-px bg-line" aria-hidden="true" />

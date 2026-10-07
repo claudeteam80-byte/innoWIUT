@@ -116,8 +116,12 @@ export function FounderCard({ startup }: { startup: AdminStartup }) {
           </div>
           <ul className="space-y-2 text-[13px]">
             <li className="flex items-center gap-2 text-ink">
-              <Mail className="h-4 w-4 text-subtle" aria-hidden="true" />
-              <a href={`mailto:${founder.email}`} className="truncate text-primary hover:underline">
+              <Mail className="h-4 w-4 shrink-0 text-subtle" aria-hidden="true" />
+              <a
+                href={`mailto:${founder.email}`}
+                title={founder.email}
+                className="min-w-0 break-all text-primary hover:underline"
+              >
                 {founder.email}
               </a>
             </li>

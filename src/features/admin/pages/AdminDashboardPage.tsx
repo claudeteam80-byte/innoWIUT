@@ -36,7 +36,7 @@ export function AdminDashboardPage() {
           <StatCard
             label="Active Startups"
             value={stats.data?.active_startups}
-            meta={`Activity in the last 7 days · of ${total}`}
+            meta={`Activity in the last 7 days · ${total} onboarded in total`}
             icon={Activity}
             loading={stats.isPending}
           />

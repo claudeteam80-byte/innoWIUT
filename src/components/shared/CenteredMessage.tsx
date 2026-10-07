@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useDocumentTitle } from '@/lib/document-title';
 import { BrandMark } from './BrandMark';
 
 export function CenteredMessage({
@@ -10,6 +11,7 @@ export function CenteredMessage({
   children?: ReactNode;
   actions?: ReactNode;
 }) {
+  useDocumentTitle(title);
   return (
     <main className="grid min-h-screen place-items-center bg-canvas px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-card">

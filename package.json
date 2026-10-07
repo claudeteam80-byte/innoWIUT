@@ -22,7 +22,8 @@
     "remote:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/remote/cleanup.mjs",
     "remote:journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/founder-journey.mjs",
     "remote:admin-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/admin-journey.mjs",
-    "remote:access-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/access-journey.mjs"
+    "remote:access-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/access-journey.mjs",
+    "remote:ui-audit": "NODE_USE_ENV_PROXY=1 node scripts/remote/ui-audit.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

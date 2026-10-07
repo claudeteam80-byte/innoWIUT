@@ -141,7 +141,7 @@ describe('AdminDashboardPage', () => {
     const card = (label: string) =>
       within(stats).getByRole('heading', { name: label }).closest('article')!;
     expect(await within(card('Active Startups')).findByText('7')).toBeInTheDocument();
-    expect(within(card('Active Startups')).getByText(/of 12/)).toBeInTheDocument();
+    expect(within(card('Active Startups')).getByText(/12 onboarded in total/)).toBeInTheDocument();
     expect(within(card('Updates This Week')).getByText('5')).toBeInTheDocument();
     expect(within(card('Startups with Traction Growth')).getByText('4')).toBeInTheDocument();
     expect(within(card('Inactive Startups')).getByText('3')).toBeInTheDocument();

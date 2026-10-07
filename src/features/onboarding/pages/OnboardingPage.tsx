@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useDocumentTitle } from '@/lib/document-title';
 import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
@@ -44,6 +45,7 @@ const YES_NO = [
 ] as const;
 
 export function OnboardingPage() {
+  useDocumentTitle('Set up your startup');
   const { profile, user, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -192,6 +194,8 @@ export function OnboardingPage() {
                     className={cn(
                       'truncate text-[12px] font-medium',
                       state === 'upcoming' ? 'text-muted' : 'text-ink',
+                      // Phones only have room for the current step's name.
+                      state !== 'current' && 'hidden sm:inline',
                     )}
                   >
                     {item.title}
@@ -421,13 +425,13 @@ export function OnboardingPage() {
           </div>
 
           <div className="mt-8 flex flex-col-reverse gap-2 border-t border-line pt-5 sm:flex-row sm:justify-between">
-            <Button
-              variant="outline"
-              onClick={() => goTo(Math.max(0, step - 1))}
-              disabled={step === 0 || busy}
-            >
-              <ArrowLeft aria-hidden="true" /> Back
-            </Button>
+            {step > 0 ? (
+              <Button variant="outline" onClick={() => goTo(step - 1)} disabled={busy}>
+                <ArrowLeft aria-hidden="true" /> Back
+              </Button>
+            ) : (
+              <span aria-hidden="true" />
+            )}
             <Button type="submit" loading={busy}>
               {step < STEPS.length - 1 ? (
                 <>

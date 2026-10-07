@@ -1,6 +1,7 @@
 import { lazy, type ComponentType } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { NotFoundPage } from '@/components/shared/NotFoundPage';
+import { RouteErrorPage } from '@/components/shared/RouteErrorPage';
 import { AdminLoginPage } from '@/features/auth/pages/AdminLoginPage';
 import { AuthChoicePage } from '@/features/auth/pages/AuthChoicePage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
@@ -77,7 +78,7 @@ const AdminSettingsPage = page(
   (m) => m.AdminSettingsPage,
 );
 
-export const routes: RouteObject[] = [
+const appRoutes: RouteObject[] = [
   { path: paths.root, element: <RootRedirect /> },
 
   // Public auth screens
@@ -148,3 +149,6 @@ export const routes: RouteObject[] = [
 
   { path: '*', element: <NotFoundPage /> },
 ];
+
+/** One error boundary for every page, so a failure never leaves a blank screen. */
+export const routes: RouteObject[] = [{ errorElement: <RouteErrorPage />, children: appRoutes }];

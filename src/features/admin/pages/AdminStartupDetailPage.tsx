@@ -1,4 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router';
+import { useDocumentTitle } from '@/lib/document-title';
 import { ArrowLeft, Building2, Globe } from 'lucide-react';
 import { paths } from '@/app/paths';
 import { Avatar } from '@/components/shared/Avatar';
@@ -36,6 +37,7 @@ export function AdminStartupDetailPage() {
   const tab: Tab = TABS.some((t) => t.value === tabParam) ? (tabParam as Tab) : 'overview';
   const startup = useAdminStartup(id);
   const activity = useStartupActivity(id);
+  useDocumentTitle(startup.data?.name ?? 'Startup');
 
   const back = (
     <Link

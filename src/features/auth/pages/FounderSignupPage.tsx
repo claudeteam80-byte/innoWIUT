@@ -97,7 +97,14 @@ export function FounderSignupPage() {
           {...register('confirmPassword')}
         />
         <CheckboxField
-          label="I agree to the Terms and Privacy Policy"
+          label={
+            <>
+              I agree to the innoWIUT Terms and Privacy Policy
+              <span className="block text-[12px] text-subtle">
+                Provided by innoWIUT. The official text will be published here.
+              </span>
+            </>
+          }
           error={errors.acceptTerms?.message}
           {...register('acceptTerms')}
         />

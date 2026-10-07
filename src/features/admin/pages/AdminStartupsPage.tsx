@@ -173,102 +173,100 @@ function metricValue(row: StartupListRow) {
 }
 
 function StartupTable({ rows }: { rows: StartupListRow[] }) {
-  const cell = 'px-2.5 py-2.5';
-  const header = `${cell} text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted whitespace-nowrap`;
-  // The startup column stays visible while the dense table scrolls horizontally.
-  const sticky = 'sticky left-0 z-10 shadow-[1px_0_0_var(--color-line)]';
-  const columns = ['Founder', 'Industry', 'Stage', 'Primary Metric'];
+  const cell = 'px-3 py-3 align-middle group-hover:bg-canvas-subtle';
+  const header =
+    'px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted whitespace-nowrap';
   return (
     <div className="hidden overflow-x-auto rounded-xl border border-line bg-white shadow-card lg:block">
-      <table className="w-full text-[12.5px]">
+      <table className="w-full table-fixed text-[12.5px]">
         <caption className="sr-only">Startups</caption>
+        <colgroup>
+          <col className="w-[27%]" />
+          <col className="w-[15%]" />
+          <col className="w-[21%]" />
+          <col className="w-[11%]" />
+          <col className="w-[13%]" />
+          <col className="w-[13%]" />
+        </colgroup>
         <thead className="border-b border-line bg-canvas-subtle">
           <tr>
-            <th scope="col" className={cn(header, sticky, 'bg-canvas-subtle')}>
+            <th scope="col" className={header}>
               Startup
             </th>
-            {columns.map((column) => (
-              <th key={column} scope="col" className={header}>
-                {column}
-              </th>
-            ))}
-            <th scope="col" className={cn(header, 'text-right')}>
-              Current Value
+            <th scope="col" className={header}>
+              Sector · Stage
             </th>
-            {['Change', 'Last Activity', 'Status', 'Mentor'].map((column) => (
-              <th key={column} scope="col" className={header}>
-                {column}
-              </th>
-            ))}
+            <th scope="col" className={header}>
+              Primary Metric
+            </th>
+            <th scope="col" className={header}>
+              Last Active
+            </th>
+            <th scope="col" className={header}>
+              Mentor
+            </th>
+            <th scope="col" className={header}>
+              Status
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.id} className="group border-b border-line/70 last:border-0">
-              <td className={cn(cell, sticky, 'bg-white group-hover:bg-canvas-subtle')}>
+              <td className={cell}>
                 <Link
                   to={paths.admin.startupDetail(row.id)}
-                  className="flex items-center gap-2.5 font-medium text-ink hover:text-primary"
+                  className="flex min-w-0 items-center gap-2.5 text-ink hover:text-primary"
                 >
                   <Avatar
                     name={row.name}
                     src={publicFileUrl('startup-logos', row.logo_path)}
                     size="sm"
                   />
-                  <span className="max-w-[150px] truncate">{row.name}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium" title={row.name}>
+                      {row.name}
+                    </span>
+                    <span className="block truncate text-[12px] text-muted">
+                      {row.founder_name || '—'}
+                    </span>
+                  </span>
                 </Link>
               </td>
-              <td
-                className={cn(
-                  cell,
-                  'max-w-[130px] truncate text-muted group-hover:bg-canvas-subtle',
+              <td className={cn(cell, 'text-muted')}>
+                <span className="block truncate text-ink">{row.industry ?? '—'}</span>
+                <span className="block truncate text-[12px]">{row.stage ?? '—'}</span>
+              </td>
+              <td className={cell}>
+                {row.primary_metric_name ? (
+                  <>
+                    <span className="block truncate text-[12px] text-muted">
+                      {row.primary_metric_name}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="whitespace-nowrap font-medium tabular-nums text-ink">
+                        {metricValue(row)}
+                      </span>
+                      <ChangePill
+                        change={describeMetricChange(
+                          row.primary_metric_previous,
+                          row.primary_metric_value,
+                        )}
+                      />
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-subtle">No metrics yet</span>
                 )}
-              >
-                {row.founder_name || '—'}
               </td>
-              <td className={cn(cell, 'text-muted group-hover:bg-canvas-subtle')}>
-                {row.industry ?? '—'}
-              </td>
-              <td className={cn(cell, 'whitespace-nowrap text-muted group-hover:bg-canvas-subtle')}>
-                {row.stage ?? '—'}
-              </td>
-              <td
-                className={cn(
-                  cell,
-                  'max-w-[120px] truncate text-muted group-hover:bg-canvas-subtle',
-                )}
-              >
-                {row.primary_metric_name ?? '—'}
-              </td>
-              <td
-                className={cn(
-                  cell,
-                  'whitespace-nowrap text-right font-medium tabular-nums text-ink group-hover:bg-canvas-subtle',
-                )}
-              >
-                {metricValue(row)}
-              </td>
-              <td className={cn(cell, 'group-hover:bg-canvas-subtle')}>
-                <ChangePill
-                  change={describeMetricChange(
-                    row.primary_metric_previous,
-                    row.primary_metric_value,
-                  )}
-                />
-              </td>
-              <td className={cn(cell, 'whitespace-nowrap text-muted group-hover:bg-canvas-subtle')}>
+              <td className={cn(cell, 'whitespace-nowrap text-muted')}>
                 {formatRelativeDay(row.last_active_on)}
               </td>
-              <td className={cn(cell, 'group-hover:bg-canvas-subtle')}>
-                <ActivityBadge status={row.activity_status} />
-              </td>
-              <td
-                className={cn(
-                  cell,
-                  'max-w-[120px] truncate text-muted group-hover:bg-canvas-subtle',
-                )}
-              >
+              <td className={cn(cell, 'truncate text-muted')} title={row.mentor_name ?? undefined}>
                 {row.mentor_name ?? <span className="text-subtle">Unassigned</span>}
+              </td>
+              <td className={cell}>
+                <ActivityBadge status={row.activity_status} />
               </td>
             </tr>
           ))}

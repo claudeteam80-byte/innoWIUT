@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useDocumentTitle } from '@/lib/document-title';
 
 interface PageHeaderProps {
   eyebrow?: string;
@@ -8,6 +9,7 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ eyebrow, title, subtitle, actions }: PageHeaderProps) {
+  useDocumentTitle(title);
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
