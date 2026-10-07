@@ -11,3 +11,4 @@ coverage
 *.tsbuildinfo
 supabase/.temp
 supabase/.branches
+.remote-validation-state.json
