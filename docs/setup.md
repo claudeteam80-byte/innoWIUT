@@ -87,3 +87,21 @@ Do not promote an account that already owns a startup.
 2. Project Settings → Environment Variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
    (Production and Preview). Never add the service role key.
 3. Deploy, then set the Supabase Site URL / Redirect URLs to the Vercel domain (see above).
+
+## Validating the real project
+
+These scripts run against the live Supabase project (anon key from `.env.local`, SQL through the
+Management API). Every record they create is labelled (`innowiut-temp` emails, `TEMP TEST` names).
+
+| Command | What it does |
+| --- | --- |
+| `npm run remote:auth -- signup --email=you+innowiut-temp-founder@example.com` | Real signup; sends the 6-digit code email |
+| `npm run remote:auth -- verify --code=123456` | Verifies the code, tests login and forgot/reset password |
+| `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions (Founder A / Founder B / temporary admin; no email sent) |
+| `npm run remote:cleanup` | Deletes every temporary user, row and file and prints what remains |
+
+Always finish with `npm run remote:cleanup`.
+
+Note for feature work: when inserting several rows at once with supabase-js, pass
+`{ defaultToNull: false }` if the rows do not all have the same keys, otherwise missing columns are
+sent as `NULL` instead of using the database default.

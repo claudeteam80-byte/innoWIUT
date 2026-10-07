@@ -12,3 +12,4 @@ coverage
 supabase/.temp
 supabase/.branches
 .remote-validation-state.json
+.remote-validation-state.security.json
