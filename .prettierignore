@@ -1,0 +1,7 @@
+dist
+coverage
+reference
+node_modules
+package-lock.json
+supabase/templates
+docs

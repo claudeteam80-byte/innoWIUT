@@ -1,0 +1,28 @@
+export const paths = {
+  root: '/',
+  authChoice: '/auth',
+  founderLogin: '/founder/login',
+  founderSignup: '/founder/signup',
+  founderVerifyEmail: '/founder/verify-email',
+  adminLogin: '/admin/login',
+  forgotPassword: '/forgot-password',
+  resetPassword: '/reset-password',
+  founder: {
+    root: '/founder',
+    onboarding: '/founder/onboarding',
+    dashboard: '/founder/dashboard',
+    updates: '/founder/updates',
+    traction: '/founder/traction',
+    mentor: '/founder/mentor',
+    startup: '/founder/startup',
+    settings: '/founder/settings',
+  },
+  admin: {
+    root: '/admin',
+    dashboard: '/admin/dashboard',
+    startups: '/admin/startups',
+    startupDetail: (id: string) => `/admin/startups/${encodeURIComponent(id)}`,
+    mentors: '/admin/mentors',
+    settings: '/admin/settings',
+  },
+} as const;

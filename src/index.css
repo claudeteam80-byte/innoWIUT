@@ -1,0 +1,51 @@
+/* Only scan app source — never the Base44 reference export. */
+@import 'tailwindcss' source('.');
+
+/*
+ * innoWIUT design tokens, taken from the Base44 prototype (reference/base44-export).
+ * Use these named colours instead of raw hex values in components.
+ */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-primary: #264f9d;
+  --color-primary-hover: #1d3e7c;
+  --color-primary-soft: #eaf1fb;
+
+  --color-navy: #17233b;
+  --color-navy-700: #22304c;
+  --color-navy-600: #33415c;
+
+  --color-ink: #1d2939;
+  --color-muted: #667085;
+  --color-subtle: #98a2b3;
+
+  --color-line: #e4e7ec;
+  --color-line-strong: #d7deea;
+  --color-canvas: #f4f7fb;
+  --color-canvas-subtle: #f9fbfe;
+
+  --color-danger: #c7293f;
+  --color-danger-strong: #a31f32;
+  --color-danger-soft: #fdecef;
+  --color-success: #358a7c;
+  --color-success-strong: #26693a;
+  --color-success-soft: #e8f4f1;
+  --color-warning: #f6ac10;
+  --color-warning-strong: #8a5a00;
+  --color-warning-soft: #fef6e4;
+
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04);
+  --shadow-nav-active: 0 12px 26px -14px rgb(38 79 157 / 1);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink;
+  }
+}

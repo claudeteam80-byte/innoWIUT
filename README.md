@@ -1,0 +1,44 @@
+# innoWIUT Founder Platform
+
+Founder and admin platform for innoWIUT (Westminster International University in Tashkent):
+founders track traction, post progress updates and work with their mentor; innoWIUT admins
+oversee every startup.
+
+**Stack:** React 19 · Vite · TypeScript · Tailwind CSS v4 · React Router · TanStack Query ·
+Zod + react-hook-form · Supabase (Auth, Postgres, Storage) · Vitest · deployed on Vercel.
+
+## Quick start
+
+```bash
+npm install
+cp .env.example .env.local   # add your Supabase URL and anon key
+npm run dev
+```
+
+See [docs/setup.md](docs/setup.md) for Supabase configuration, creating admins and deployment.
+
+## Project layout
+
+```
+src/
+  app/            router, route table, paths, App entry
+  routes/guards/  role + onboarding guards and the pure access rules they use
+  layouts/        FounderAppShell, AdminAppShell, navigation
+  features/       auth, onboarding, founder, admin (api / pages / schemas per feature)
+  domain/         framework-free business logic (activity status, traction maths, formatting)
+  components/     ui primitives and shared building blocks
+  lib/            env validation, Supabase client, query client, helpers
+  types/          Supabase database types
+supabase/
+  migrations/     schema, RLS policies, storage buckets
+  templates/      auth email templates (6-digit code, reset link)
+  tests/          local RLS test harness
+reference/        Base44 prototype export — design reference only, never imported
+docs/             audit and setup docs
+```
+
+## Status
+
+Phase 2 (production foundation): auth, guards, app shells, schema, RLS and storage are in place.
+Feature screens are placeholders and show no data until their phases are built — the app never
+shows sample or fake numbers.
