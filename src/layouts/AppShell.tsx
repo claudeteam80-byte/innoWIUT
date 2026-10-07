@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { LogOut, Menu, X, type LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/shared/BrandMark';
+import { SectionSpinner } from '@/components/shared/FullPageSpinner';
 import { useAuth } from '@/features/auth/useAuth';
 import { cn } from '@/lib/cn';
 import { initials } from '@/lib/text';
@@ -135,7 +136,9 @@ export function AppShell({ navItems, workspaceLabel, signedOutPath, navLabel }: 
         </header>
 
         <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <Outlet />
+          <Suspense fallback={<SectionSpinner />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

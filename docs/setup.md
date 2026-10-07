@@ -73,8 +73,11 @@ Do not promote an account that already owns a startup.
   Admins only see published founder updates, not drafts.
 - Column-level grants block client writes to `profiles.role`, `startups.owner_id`,
   `startups.onboarding_completed_at` and derived traction values.
-- `onboarding_completed_at` will be set by a server-side function in the onboarding phase; until then it can
-  only be set from the SQL editor.
+- `onboarding_completed_at` is only set by `public.complete_onboarding()`, which runs with the founder's
+  own privileges and calls the `private.mark_onboarding_complete()` helper for that single column.
+- Founder writes that span several rows go through database functions so they are atomic:
+  `complete_onboarding()` (profile + startup + initial traction), `add_traction_metric()` and
+  `record_traction()`. All API-exposed functions are `SECURITY INVOKER`.
 - Traction entries are append-only; metric current/previous values are maintained by a trigger.
 - Storage: `startup-logos` (public), `update-attachments` (private, signed URLs), `mentor-photos` (public);
   object paths start with the owning startup/mentor id.
@@ -98,6 +101,7 @@ Management API). Every record they create is labelled (`innowiut-temp` emails, `
 | `npm run remote:auth -- signup --email=you+innowiut-temp-founder@example.com` | Real signup; sends the 6-digit code email |
 | `npm run remote:auth -- verify --code=123456` | Verifies the code, tests login and forgot/reset password |
 | `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions (Founder A / Founder B / temporary admin; no email sent) |
+| `npm run remote:journey -- --email=you+innowiut-temp-journey@example.com` | Full founder journey in a real browser: signup, 6-digit verification, onboarding with logo, traction, draft → published update with image, profile + team, mentor + meeting request, reload persistence, phone layout. Needs the built app served on port 4175 (`npm run build && npx vite preview --port 4175 --strictPort`). It sends one real verification email, reads the matching code from Supabase's stored hash of it and types it into the verify screen. Cleans up after itself. |
 | `npm run remote:cleanup` | Deletes every temporary user, row and file and prints what remains |
 
 Always finish with `npm run remote:cleanup`.

@@ -19,10 +19,12 @@
     "db:migrate": "NODE_USE_ENV_PROXY=1 node scripts/apply-migrations.mjs",
     "remote:auth": "NODE_USE_ENV_PROXY=1 node scripts/remote/auth-flow.mjs",
     "remote:security": "NODE_USE_ENV_PROXY=1 node scripts/remote/security.mjs",
-    "remote:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/remote/cleanup.mjs"
+    "remote:cleanup": "NODE_USE_ENV_PROXY=1 node scripts/remote/cleanup.mjs",
+    "remote:journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/founder-journey.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@radix-ui/react-dialog": "^1.2.0",
     "@supabase/supabase-js": "^2.117.3",
     "@tanstack/react-query": "^5.104.1",
     "clsx": "^2.1.1",
@@ -32,6 +34,7 @@
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.89.0",
     "react-router": "^8.4.0",
+    "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.5"
   },
@@ -50,6 +53,7 @@
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.56.1",
     "prettier": "^3.9.9",
     "supabase": "^2.120.0",
     "tailwindcss": "^4.3.3",

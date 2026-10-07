@@ -413,4 +413,130 @@ select set_config('request.jwt.claims', :claims_b, true);
 select tests.check((select count(*) from storage.objects) = 0, 'founder B cannot list A files');
 rollback;
 
+-- ---------------------------------------------------------------------------
+-- Founder core functions (20261008000001_founder_core.sql)
+-- ---------------------------------------------------------------------------
+\set founder_c '''44444444-4444-4444-4444-444444444444'''
+\set claims_c '''{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}'''
+insert into auth.users (id, email, raw_user_meta_data) values (:founder_c, 'c@example.com', '{"full_name":"C"}');
+
+\set onboarding_payload '''{"full_name":"Founder C","phone":"+998 90 123 45 67","role_in_startup":"CEO","name":"Gamma","tagline":"Learning platform","industry":"EdTech","stage":"MVP","founded_year":2025,"team_size":3,"has_product":true,"has_users":true,"current_users":640,"has_revenue":true,"monthly_revenue":1200000,"revenue_currency":"UZS","main_goal":"Grow","biggest_challenge":"Content"}'''
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_c, true);
+select tests.expect_error(
+  $$select public.complete_onboarding('{"full_name":"x"}'::jsonb)$$,
+  '22023', 'onboarding rejects missing fields'
+);
+select tests.expect_error(
+  format('select public.complete_onboarding(%L::jsonb)', jsonb_set(:onboarding_payload::jsonb, '{monthly_revenue}', 'null')),
+  '22023', 'onboarding requires revenue when has_revenue'
+);
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_c, true);
+select public.complete_onboarding(:onboarding_payload::jsonb);
+commit;
+
+select tests.check(
+  (select onboarding_completed_at is not null and founder_role = 'CEO' and team_size = 3
+   from public.startups where owner_id = :founder_c),
+  'complete_onboarding creates a completed startup'
+);
+select tests.check(
+  (select full_name = 'Founder C' and phone = '+998 90 123 45 67' from public.profiles where id = :founder_c),
+  'complete_onboarding updates the profile'
+);
+select tests.check(
+  (select count(*) = 2 from public.traction_metrics m join public.startups s on s.id = m.startup_id
+   where s.owner_id = :founder_c),
+  'complete_onboarding seeds users and revenue metrics'
+);
+select tests.check(
+  (select unit = 'currency' and currency = 'UZS' and current_value = 1200000 and previous_value is null
+   from public.traction_metrics m join public.startups s on s.id = m.startup_id
+   where s.owner_id = :founder_c and m.name = 'Monthly Revenue'),
+  'revenue metric has explicit unit, currency and first value'
+);
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_c, true);
+select tests.expect_error(
+  format('select public.complete_onboarding(%L::jsonb)', :onboarding_payload),
+  'P0001', 'onboarding cannot run twice'
+);
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+select tests.expect_error(
+  format('select public.complete_onboarding(%L::jsonb)', :onboarding_payload),
+  '42501', 'admins cannot complete founder onboarding'
+);
+rollback;
+
+begin;
+set local role anon;
+select tests.expect_error(
+  $$select public.record_traction('[]'::jsonb)$$,
+  '42501', 'anon cannot call record_traction'
+);
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_c, true);
+select public.add_traction_metric('Customers', 'number', null, 100, null, 10, current_date - 1);
+select public.record_traction(
+  (select jsonb_agg(jsonb_build_object('metric_id', m.id, 'value', 20))
+   from public.traction_metrics m where m.name in ('Customers', 'Active Users')),
+  current_date, 'Weekly numbers'
+);
+select tests.expect_error(
+  format('select public.record_traction(%L::jsonb, current_date + 5)',
+    (select jsonb_agg(jsonb_build_object('metric_id', id, 'value', 1)) from public.traction_metrics where name = 'Customers')),
+  '22023', 'record_traction rejects future dates'
+);
+select tests.expect_error(
+  $$select public.record_traction('[]'::jsonb)$$,
+  '22023', 'record_traction needs at least one value'
+);
+commit;
+
+select tests.check(
+  (select current_value = 20 and previous_value = 10 and target = 100
+   from public.traction_metrics where name = 'Customers'),
+  'add_traction_metric + record_traction keep server-derived values'
+);
+select tests.check(
+  (select current_value = 20 and previous_value = 640 from public.traction_metrics
+   where name = 'Active Users' and startup_id = (select id from public.startups where owner_id = :founder_c)),
+  'record_traction updates several metrics at once'
+);
+
+select id as customers_metric from public.traction_metrics where name = 'Customers' \gset
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_b, true);
+select tests.expect_error(
+  format('select public.record_traction(%L::jsonb)',
+    jsonb_build_array(jsonb_build_object('metric_id', :'customers_metric', 'value', 1))),
+  '42501', 'founder B cannot record traction for founder C'
+);
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+select tests.expect_error(
+  $$select public.add_traction_metric('Admin metric', 'number')$$,
+  'P0002', 'admin has no startup to add metrics to'
+);
+rollback;
+
 \echo 'All RLS tests passed'

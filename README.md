@@ -39,6 +39,8 @@ docs/             audit and setup docs
 
 ## Status
 
-Phase 2 (production foundation): auth, guards, app shells, schema, RLS and storage are in place.
-Feature screens are placeholders and show no data until their phases are built — the app never
-shows sample or fake numbers.
+Phase 3 (Founder Core) complete: signup with 6-digit email verification, 3-step onboarding,
+dashboard, traction (metrics, multi-metric recording, chart, history), updates (drafts, publishing,
+private images), startup profile with team, mentor page with notes and meeting requests, and
+settings — all backed by the real Supabase project. Admin screens are still placeholders. The app
+never shows sample or fake numbers.

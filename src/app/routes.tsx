@@ -1,12 +1,6 @@
+import { lazy, type ComponentType } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { NotFoundPage } from '@/components/shared/NotFoundPage';
-import {
-  AdminDashboardPage,
-  AdminMentorsPage,
-  AdminSettingsPage,
-  AdminStartupDetailPage,
-  AdminStartupsPage,
-} from '@/features/admin/pages/AdminPages';
 import { AdminLoginPage } from '@/features/auth/pages/AdminLoginPage';
 import { AuthChoicePage } from '@/features/auth/pages/AuthChoicePage';
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
@@ -14,21 +8,52 @@ import { FounderLoginPage } from '@/features/auth/pages/FounderLoginPage';
 import { FounderSignupPage } from '@/features/auth/pages/FounderSignupPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage';
-import {
-  FounderDashboardPage,
-  FounderMentorPage,
-  FounderSettingsPage,
-  FounderStartupProfilePage,
-  FounderTractionPage,
-  FounderUpdatesPage,
-} from '@/features/founder/pages/FounderPages';
-import { OnboardingPage } from '@/features/onboarding/pages/OnboardingPage';
 import { AdminAppShell } from '@/layouts/AdminAppShell';
 import { FounderAppShell } from '@/layouts/FounderAppShell';
 import { RequireOnboarding } from '@/routes/guards/RequireOnboarding';
 import { RequireRole } from '@/routes/guards/RequireRole';
 import { RootRedirect } from '@/routes/guards/RootRedirect';
 import { paths } from './paths';
+
+/** Signed-in pages load on demand so the sign-in screens stay small. */
+function page<T>(load: () => Promise<T>, pick: (module: T) => ComponentType) {
+  return lazy(() => load().then((module) => ({ default: pick(module) })));
+}
+
+const OnboardingPage = page(
+  () => import('@/features/onboarding/pages/OnboardingPage'),
+  (m) => m.OnboardingPage,
+);
+const DashboardPage = page(
+  () => import('@/features/dashboard/pages/DashboardPage'),
+  (m) => m.DashboardPage,
+);
+const UpdatesPage = page(
+  () => import('@/features/updates/pages/UpdatesPage'),
+  (m) => m.UpdatesPage,
+);
+const TractionPage = page(
+  () => import('@/features/traction/pages/TractionPage'),
+  (m) => m.TractionPage,
+);
+const MentorPage = page(
+  () => import('@/features/mentor/pages/MentorPage'),
+  (m) => m.MentorPage,
+);
+const StartupProfilePage = page(
+  () => import('@/features/startup/pages/StartupProfilePage'),
+  (m) => m.StartupProfilePage,
+);
+const SettingsPage = page(
+  () => import('@/features/settings/pages/SettingsPage'),
+  (m) => m.SettingsPage,
+);
+const adminPages = () => import('@/features/admin/pages/AdminPages');
+const AdminDashboardPage = page(adminPages, (m) => m.AdminDashboardPage);
+const AdminStartupsPage = page(adminPages, (m) => m.AdminStartupsPage);
+const AdminStartupDetailPage = page(adminPages, (m) => m.AdminStartupDetailPage);
+const AdminMentorsPage = page(adminPages, (m) => m.AdminMentorsPage);
+const AdminSettingsPage = page(adminPages, (m) => m.AdminSettingsPage);
 
 export const routes: RouteObject[] = [
   { path: paths.root, element: <RootRedirect /> },
@@ -62,12 +87,12 @@ export const routes: RouteObject[] = [
                 path: paths.founder.root,
                 element: <Navigate to={paths.founder.dashboard} replace />,
               },
-              { path: paths.founder.dashboard, element: <FounderDashboardPage /> },
-              { path: paths.founder.updates, element: <FounderUpdatesPage /> },
-              { path: paths.founder.traction, element: <FounderTractionPage /> },
-              { path: paths.founder.mentor, element: <FounderMentorPage /> },
-              { path: paths.founder.startup, element: <FounderStartupProfilePage /> },
-              { path: paths.founder.settings, element: <FounderSettingsPage /> },
+              { path: paths.founder.dashboard, element: <DashboardPage /> },
+              { path: paths.founder.updates, element: <UpdatesPage /> },
+              { path: paths.founder.traction, element: <TractionPage /> },
+              { path: paths.founder.mentor, element: <MentorPage /> },
+              { path: paths.founder.startup, element: <StartupProfilePage /> },
+              { path: paths.founder.settings, element: <SettingsPage /> },
             ],
           },
         ],

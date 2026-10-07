@@ -20,3 +20,32 @@ export function parseDate(value: string | Date | null | undefined): Date | null 
   const date = new Date(value);
   return isValid(date) ? date : null;
 }
+
+/** "Today", "Yesterday", "3 days ago", or "Oct 2, 2026". */
+export function formatRelativeDay(
+  value: string | Date | null | undefined,
+  now: Date = new Date(),
+): string {
+  const date = parseDate(value);
+  if (!date) return '—';
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const days = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  return formatDate(date);
+}
+
+export function formatDate(
+  value: string | Date | null | undefined,
+  style: 'short' | 'long' = 'short',
+): string {
+  const date = parseDate(value);
+  if (!date) return '—';
+  return date.toLocaleDateString('en-US', {
+    month: style === 'long' ? 'long' : 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}

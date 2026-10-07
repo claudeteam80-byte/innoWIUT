@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatMetricValue, formatMoney, formatNumber, formatSignedPercent } from './format';
+import {
+  formatCompact,
+  formatMetricValue,
+  formatMoney,
+  formatNumber,
+  formatSignedPercent,
+} from './format';
+
+const NBSP = '\u00a0';
 
 describe('formatNumber', () => {
   it('groups thousands', () => {
@@ -20,9 +28,16 @@ describe('formatMoney', () => {
     expect(formatMoney(19.99, 'USD')).toBe('$19.99');
   });
 
-  it('formats UZS without decimals and with the code', () => {
-    expect(formatMoney(12500000, 'UZS')).toBe('12,500,000 UZS');
-    expect(formatMoney(999.6, 'UZS')).toBe('1,000 UZS');
+  it('formats UZS with space grouping, no decimals and the code', () => {
+    expect(formatMoney(1240000, 'UZS')).toBe(`1${NBSP}240${NBSP}000${NBSP}UZS`);
+    expect(formatMoney(999.6, 'UZS')).toBe(`1${NBSP}000${NBSP}UZS`);
+    expect(formatMoney(0, 'UZS')).toBe(`0${NBSP}UZS`);
+  });
+
+  it('formats the spec examples', () => {
+    expect(formatMoney(1240, 'USD')).toBe('$1,240');
+    expect(formatMetricValue(28, 'percent')).toBe('28%');
+    expect(formatMetricValue(640, 'number')).toBe('640');
   });
 });
 
@@ -31,7 +46,7 @@ describe('formatMetricValue', () => {
     expect(formatMetricValue(640, 'number')).toBe('640');
     expect(formatMetricValue(42.5, 'percent')).toBe('42.5%');
     expect(formatMetricValue(3000, 'currency', 'USD')).toBe('$3,000');
-    expect(formatMetricValue(3000000, 'currency', 'UZS')).toBe('3,000,000 UZS');
+    expect(formatMetricValue(3000000, 'currency', 'UZS')).toBe(`3${NBSP}000${NBSP}000${NBSP}UZS`);
   });
 
   it('falls back to a plain number when a currency metric has no currency', () => {
@@ -48,5 +63,22 @@ describe('formatSignedPercent', () => {
     expect(formatSignedPercent(12.4)).toBe('+12%');
     expect(formatSignedPercent(-3.25)).toBe('-3.3%');
     expect(formatSignedPercent(0.01)).toBe('0.0%');
+  });
+});
+
+describe('never shows NaN or Infinity', () => {
+  it.each([NaN, Infinity, -Infinity, 'abc', undefined])('%s → dash', (value) => {
+    expect(formatMetricValue(value as number, 'number')).toBe('—');
+    expect(formatMetricValue(value as number, 'currency', 'USD')).toBe('—');
+    expect(formatMetricValue(value as number, 'percent')).toBe('—');
+  });
+});
+
+describe('formatCompact', () => {
+  it('abbreviates large axis values', () => {
+    expect(formatCompact(950)).toBe('950');
+    expect(formatCompact(1200)).toBe('1.2K');
+    expect(formatCompact(25000)).toBe('25K');
+    expect(formatCompact(3400000)).toBe('3.4M');
   });
 });

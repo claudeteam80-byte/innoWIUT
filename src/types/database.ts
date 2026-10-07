@@ -207,8 +207,10 @@ export type Database = {
           expertise: string[];
           id: string;
           is_active: boolean;
+          linkedin_url: string | null;
           name: string;
           photo_path: string | null;
+          telegram: string | null;
           title: string | null;
           updated_at: string;
         };
@@ -221,8 +223,10 @@ export type Database = {
           expertise?: string[];
           id?: string;
           is_active?: boolean;
+          linkedin_url?: string | null;
           name: string;
           photo_path?: string | null;
+          telegram?: string | null;
           title?: string | null;
           updated_at?: string;
         };
@@ -235,8 +239,10 @@ export type Database = {
           expertise?: string[];
           id?: string;
           is_active?: boolean;
+          linkedin_url?: string | null;
           name?: string;
           photo_path?: string | null;
+          telegram?: string | null;
           title?: string | null;
           updated_at?: string;
         };
@@ -633,6 +639,63 @@ export type Database = {
       activity_status: {
         Args: { days_since_activity: number };
         Returns: string;
+      };
+      add_traction_metric: {
+        Args: {
+          p_currency?: Database['public']['Enums']['currency_code'];
+          p_initial_value?: number;
+          p_name: string;
+          p_note?: string;
+          p_recorded_on?: string;
+          p_target?: number;
+          p_unit: Database['public']['Enums']['metric_unit'];
+        };
+        Returns: {
+          created_at: string;
+          currency: Database['public']['Enums']['currency_code'] | null;
+          current_value: number | null;
+          id: string;
+          is_archived: boolean;
+          last_recorded_on: string | null;
+          name: string;
+          note: string | null;
+          previous_value: number | null;
+          startup_id: string;
+          target: number | null;
+          unit: Database['public']['Enums']['metric_unit'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'traction_metrics';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      complete_onboarding: { Args: { payload: Json }; Returns: string };
+      record_traction: {
+        Args: { p_entries: Json; p_note?: string; p_recorded_on?: string };
+        Returns: {
+          created_at: string;
+          currency: Database['public']['Enums']['currency_code'] | null;
+          current_value: number | null;
+          id: string;
+          is_archived: boolean;
+          last_recorded_on: string | null;
+          name: string;
+          note: string | null;
+          previous_value: number | null;
+          startup_id: string;
+          target: number | null;
+          unit: Database['public']['Enums']['metric_unit'];
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'traction_metrics';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
     };
     Enums: {
