@@ -48,3 +48,7 @@ Phase 4 (Admin Core) complete: ecosystem dashboard with server-computed stats, s
 server-side search/filter/sort/pagination, startup detail (overview, traction, published updates,
 team, mentor), mentor management with photos, mentor assignment with history, mentor notes, meeting
 request handling and admin settings. The app never shows sample or fake numbers.
+
+Admin access management: `founder` / `admin` / `superadmin` roles enforced in Postgres. Superadmins
+grant, revoke and promote admins at `/admin/access`; every role change is audited and the last
+superadmin cannot be removed. See [docs/setup.md](docs/setup.md#admin-access-no-public-admin-signup).

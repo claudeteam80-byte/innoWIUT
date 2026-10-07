@@ -24,6 +24,7 @@ export const paths = {
     startupDetail: (id: string) => `/admin/startups/${encodeURIComponent(id)}`,
     mentors: '/admin/mentors',
     meetingRequests: '/admin/meeting-requests',
+    access: '/admin/access',
     settings: '/admin/settings',
   },
 } as const;

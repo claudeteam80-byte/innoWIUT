@@ -50,26 +50,68 @@ With the Supabase CLI and Docker you can instead run the full local stack: `npx 
 7. Regenerate types after any schema change: `npm run gen:types` (writes `src/types/database.ts`;
    hand-written aliases live in `src/types/app.ts`).
 
-## Creating an admin (no public admin signup)
+## Admin access (no public admin signup)
 
-Admins are created by staff only. There is no route, API or policy that lets a user change a role.
+Roles live in `profiles.role`: `founder`, `admin`, `superadmin`. Admins and superadmins have the same
+admin permissions; only a superadmin can manage admin access (page `/admin/access`). Every admin signs in
+with their own email and password — there are no shared admin credentials.
 
-1. Supabase dashboard → **Authentication → Users → Add user → Create new user**
-   (email + password, tick "Auto Confirm User").
-2. **SQL Editor**:
+The rules are enforced in the database, not the app:
+
+- Clients cannot write `profiles.role` (column grants). Role changes only happen through
+  `grant_admin_access()`, `revoke_admin_access()` and `promote_to_superadmin()`, which refuse anyone who is
+  not a superadmin. Nobody can change their own role through them except a superadmin removing their own
+  access with explicit confirmation.
+- A trigger refuses any change (including from the SQL editor) that would leave zero superadmins.
+- Every role change, from the app or the SQL editor, is written to `admin_role_events`
+  (readable by superadmins only, not writable by anyone through the API).
+- No service-role key is used anywhere; the app only has the anon key.
+
+### Creating the first superadmin (one time, manual)
+
+1. Create the account, either way:
+   - **A.** Supabase dashboard → **Authentication → Users → Add user → Create new user**: the owner's email,
+     a strong unique password (keep it in a password manager), tick **Auto Confirm User**.
+   - **B.** Sign up at `https://www.foundertrack.space/founder/signup`, enter the 6-digit code, and
+     **do not complete onboarding** (an account that owns a startup cannot become an admin).
+2. Supabase dashboard → **SQL Editor** → run (replace the email):
    ```sql
-   update public.profiles set role = 'admin' where email = 'staff.member@wiut.uz';
+   update public.profiles
+   set role = 'superadmin'
+   where lower(email) = lower('owner@example.com')
+     and role = 'founder'
+     and not exists (select 1 from public.startups where owner_id = profiles.id)
+   returning id, email, role;
    ```
-3. The person signs in at `/admin/login`.
+   Expect exactly one row. Zero rows means the email is wrong, the account does not exist yet, or it
+   already owns a startup.
+3. Check:
+   ```sql
+   select id, email, role from public.profiles where role = 'superadmin';
+   select target_email, previous_role, new_role, changed_by_email, created_at
+   from public.admin_role_events order by created_at desc limit 5;
+   ```
+   One superadmin, and one `founder → superadmin` event with no actor (shown in the app as
+   "SQL editor (manual)").
+4. Sign in at `/admin/login`. The sidebar shows **Admin Access**.
 
-To revoke: `update public.profiles set role = 'founder' where email = '…';` (or delete the user).
-Do not promote an account that already owns a startup.
+### Adding and removing admins
+
+1. The person creates their own account at `/founder/signup` and verifies the 6-digit code
+   (no onboarding). They choose their own password.
+2. A superadmin opens **Admin Access → Grant Admin Access**, enters the email, checks the name and email
+   shown, ticks the confirmation and grants. The person can now sign in at `/admin/login`.
+3. **Revoke Access** turns the account back into a founder account immediately; an open admin session
+   leaves the admin area within a minute. **Promote to Superadmin** requires typing the person's email.
+
+Forgotten passwords: `/forgot-password?portal=admin`. To hand over the last superadmin role, promote the new
+person first, then revoke the old account — the database never allows zero superadmins.
 
 ## Security model
 
 - Every table has RLS enabled; `anon` has no table access.
 - Founders only see and change their own startup's rows (`private.owns_startup`).
-- Admins read everything and manage mentors, assignments, notes and meeting request status (`private.is_admin`).
+- Admins and superadmins read everything and manage mentors, assignments, notes and meeting request status (`private.is_admin`).
 - Admin screens use database functions that refuse non-admins: `admin_dashboard_stats()` (counts computed in
   Postgres), `admin_startup_list()` (search / filter / sort / pagination in Postgres), `assign_mentor()` /
   `end_mentor_assignment()` (one active mentor per startup, history kept) and `delete_mentor()` (refuses while
@@ -107,6 +149,7 @@ Management API). Every record they create is labelled (`innowiut-temp` emails, `
 | `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions (Founder A / Founder B / temporary admin; no email sent) |
 | `npm run remote:journey -- --email=you+innowiut-temp-journey@example.com` | Full founder journey in a real browser: signup, 6-digit verification, onboarding with logo, traction, draft → published update with image, profile + team, mentor + meeting request, reload persistence, phone layout. Needs the built app served on port 4175 (`npm run build && npx vite preview --port 4175 --strictPort`). It sends one real verification email, reads the matching code from Supabase's stored hash of it and types it into the verify screen. Cleans up after itself. |
 | `npm run remote:admin-journey` | Admin journey in two real browsers (admin + founder): login, dashboard stats checked against `admin_dashboard_stats()`, startup search, detail tabs (traction, published-only updates), mentor creation with photo, assignment, notes, founder meeting request, admin confirmation, founder sees "Confirmed", cross-role route guards, tablet/phone layouts. Needs the built app on port 4175. Sends no email. |
+| `npm run remote:access-journey` | Admin access management in real browsers: `/admin/access` refused to founders and admins, grant via the UI, the new admin can sign in, revoke, the revoked account is refused at `/admin/login`, history entries, self-removal blocked for the only superadmin, promotion with typed email. Uses temporary accounts only; needs the built app on port 4175. |
 | `npm run remote:cleanup` | Deletes every temporary user, row and file and prints what remains |
 
 Always finish with `npm run remote:cleanup`.

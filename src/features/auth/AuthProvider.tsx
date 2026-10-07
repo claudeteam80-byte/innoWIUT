@@ -31,7 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryKey: authKeys.profile(userId),
     queryFn: () => fetchProfile(userId as string),
     enabled: Boolean(userId),
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
+    // Re-check the role regularly so revoked admin access leaves the UI quickly.
+    // The database refuses revoked users immediately either way.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 
   let profileStatus: ProfileStatus = 'idle';

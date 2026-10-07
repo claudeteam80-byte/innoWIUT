@@ -11,17 +11,34 @@ export type AccessDecision =
 export const ROLE_HOME: Record<AppRole, string> = {
   founder: paths.founder.dashboard,
   admin: paths.admin.dashboard,
+  superadmin: paths.admin.dashboard,
 };
 
 export const ROLE_LOGIN: Record<AppRole, string> = {
   founder: paths.founderLogin,
   admin: paths.adminLogin,
+  superadmin: paths.adminLogin,
 };
 
 export const ROLE_AREA: Record<AppRole, string> = {
   founder: paths.founder.root,
   admin: paths.admin.root,
+  superadmin: paths.admin.root,
 };
+
+/** Admins and superadmins share the admin area. */
+export function isAdminRole(role: AppRole | null | undefined): boolean {
+  return role === 'admin' || role === 'superadmin';
+}
+
+/**
+ * Whether `role` may enter an area that requires `required`:
+ * founder → founders only; admin → admins and superadmins; superadmin → superadmins only.
+ */
+export function roleSatisfies(role: AppRole, required: AppRole): boolean {
+  if (required === 'admin') return isAdminRole(role);
+  return role === required;
+}
 
 interface SessionInput {
   authStatus: AuthStatus;
@@ -44,7 +61,7 @@ export function resolveRoleAccess(
   }
   if (profileStatus === 'idle' || profileStatus === 'loading') return { kind: 'loading' };
   if (profileStatus === 'error' || !role) return { kind: 'error' };
-  if (role !== requiredRole) return { kind: 'redirect', to: ROLE_HOME[role] };
+  if (!roleSatisfies(role, requiredRole)) return { kind: 'redirect', to: ROLE_HOME[role] };
   return { kind: 'allow' };
 }
 

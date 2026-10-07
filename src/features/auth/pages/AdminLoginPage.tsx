@@ -8,6 +8,7 @@ import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { isAdminRole } from '@/routes/guards/access';
 import { useSignedInRedirect } from '@/routes/guards/useSignedInRedirect';
 import { fetchProfile, signInWithPassword, signOutLocal } from '../api';
 import { AuthHeading, CardAuthLayout } from '../components/AuthLayout';
@@ -39,7 +40,7 @@ export function AdminLoginPage() {
     try {
       const { user } = await signInWithPassword(email, password);
       const profile = await fetchProfile(user.id);
-      if (profile?.role !== 'admin') {
+      if (!isAdminRole(profile?.role)) {
         await signOutLocal();
         setFormError(ADMIN_ACCESS_DENIED_MESSAGE);
         return;

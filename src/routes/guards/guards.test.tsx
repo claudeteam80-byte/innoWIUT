@@ -61,6 +61,10 @@ const routes: RouteObject[] = [
       { path: '/admin/startups', element: <Screen name="Admin startups" /> },
       { path: '/admin/meeting-requests', element: <Screen name="Admin meeting requests" /> },
       { path: '/admin/startups/:id', element: <Screen name="Admin startup detail" /> },
+      {
+        element: <RequireRole role="superadmin" />,
+        children: [{ path: '/admin/access', element: <Screen name="Admin access" /> }],
+      },
     ],
   },
 ];
@@ -117,6 +121,26 @@ describe('RequireRole', () => {
       expect(await screen.findByRole('heading', { name: 'Founder dashboard' })).toBeInTheDocument();
     },
   );
+
+  it('keeps a founder out of /admin/access', async () => {
+    renderAt('/admin/access', signedInAs('founder'));
+    expect(await screen.findByRole('heading', { name: 'Founder dashboard' })).toBeInTheDocument();
+  });
+
+  it('keeps a regular admin out of /admin/access', async () => {
+    renderAt('/admin/access', signedInAs('admin'));
+    expect(await screen.findByRole('heading', { name: 'Admin dashboard' })).toBeInTheDocument();
+  });
+
+  it('lets a superadmin into /admin/access and the rest of the admin area', async () => {
+    renderAt('/admin/access', signedInAs('superadmin'));
+    expect(await screen.findByRole('heading', { name: 'Admin access' })).toBeInTheDocument();
+  });
+
+  it('lets a superadmin use regular admin pages', async () => {
+    renderAt('/admin/startups', signedInAs('superadmin'));
+    expect(await screen.findByRole('heading', { name: 'Admin startups' })).toBeInTheDocument();
+  });
 
   it('lets an admin into the admin area', async () => {
     renderAt('/admin/startups', signedInAs('admin'));

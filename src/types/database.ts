@@ -8,6 +8,54 @@ export type Database = {
   };
   public: {
     Tables: {
+      admin_role_events: {
+        Row: {
+          changed_by: string | null;
+          changed_by_email: string | null;
+          created_at: string;
+          id: string;
+          new_role: Database['public']['Enums']['app_role'];
+          previous_role: Database['public']['Enums']['app_role'];
+          target_email: string;
+          target_user_id: string | null;
+        };
+        Insert: {
+          changed_by?: string | null;
+          changed_by_email?: string | null;
+          created_at?: string;
+          id?: string;
+          new_role: Database['public']['Enums']['app_role'];
+          previous_role: Database['public']['Enums']['app_role'];
+          target_email: string;
+          target_user_id?: string | null;
+        };
+        Update: {
+          changed_by?: string | null;
+          changed_by_email?: string | null;
+          created_at?: string;
+          id?: string;
+          new_role?: Database['public']['Enums']['app_role'];
+          previous_role?: Database['public']['Enums']['app_role'];
+          target_email?: string;
+          target_user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'admin_role_events_changed_by_fkey';
+            columns: ['changed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'admin_role_events_target_user_id_fkey';
+            columns: ['target_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       meeting_requests: {
         Row: {
           admin_response: string | null;
@@ -672,6 +720,17 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      admin_access_list: {
+        Args: never;
+        Returns: {
+          added_at: string;
+          email: string;
+          full_name: string;
+          id: string;
+          last_sign_in_at: string;
+          role: Database['public']['Enums']['app_role'];
+        }[];
+      };
       admin_dashboard_stats: {
         Args: never;
         Returns: {
@@ -683,6 +742,16 @@ export type Database = {
           total_startups: number;
           unassigned_startups: number;
           updates_this_week: number;
+        }[];
+      };
+      admin_find_user: {
+        Args: { p_email: string };
+        Returns: {
+          email: string;
+          full_name: string;
+          id: string;
+          owns_startup: boolean;
+          role: Database['public']['Enums']['app_role'];
         }[];
       };
       admin_startup_list: {
@@ -743,6 +812,48 @@ export type Database = {
         Args: { p_startup_id: string };
         Returns: boolean;
       };
+      grant_admin_access: {
+        Args: { p_email: string };
+        Returns: {
+          created_at: string;
+          email: string;
+          full_name: string;
+          id: string;
+          linkedin_url: string | null;
+          notify_update_reminders: boolean;
+          notify_weekly_summary: boolean;
+          phone: string | null;
+          role: Database['public']['Enums']['app_role'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'profiles';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      promote_to_superadmin: {
+        Args: { p_confirm_email: string; p_user_id: string };
+        Returns: {
+          created_at: string;
+          email: string;
+          full_name: string;
+          id: string;
+          linkedin_url: string | null;
+          notify_update_reminders: boolean;
+          notify_weekly_summary: boolean;
+          phone: string | null;
+          role: Database['public']['Enums']['app_role'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'profiles';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       record_traction: {
         Args: { p_entries: Json; p_note?: string; p_recorded_on?: string };
         Returns: {
@@ -767,9 +878,30 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      revoke_admin_access: {
+        Args: { p_confirm_self?: boolean; p_user_id: string };
+        Returns: {
+          created_at: string;
+          email: string;
+          full_name: string;
+          id: string;
+          linkedin_url: string | null;
+          notify_update_reminders: boolean;
+          notify_weekly_summary: boolean;
+          phone: string | null;
+          role: Database['public']['Enums']['app_role'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'profiles';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
-      app_role: 'founder' | 'admin';
+      app_role: 'founder' | 'admin' | 'superadmin';
       currency_code: 'USD' | 'UZS';
       meeting_request_status: 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
       metric_unit: 'number' | 'currency' | 'percent';
@@ -895,7 +1027,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ['founder', 'admin'],
+      app_role: ['founder', 'admin', 'superadmin'],
       currency_code: ['USD', 'UZS'],
       meeting_request_status: ['requested', 'confirmed', 'completed', 'declined', 'cancelled'],
       metric_unit: ['number', 'currency', 'percent'],

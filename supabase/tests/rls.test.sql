@@ -647,4 +647,137 @@ select tests.check(
   'archived mentor keeps assignment history'
 );
 
+-- ---------------------------------------------------------------------------
+-- Admin access management (20261010000001/2)
+-- ---------------------------------------------------------------------------
+\set super_id '''55555555-5555-5555-5555-555555555555'''
+\set claims_super '''{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated"}'''
+\set founder_d '''66666666-6666-6666-6666-666666666666'''
+\set claims_d '''{"sub":"66666666-6666-6666-6666-666666666666","role":"authenticated"}'''
+insert into auth.users (id, email, raw_user_meta_data) values
+  (:super_id, 'owner@example.com', '{"full_name":"Owner"}'),
+  (:founder_d, 'd@example.com', '{"full_name":"Dana"}');
+-- First superadmin is created manually (SQL editor: no auth.uid()).
+update public.profiles set role = 'superadmin' where id = :super_id;
+
+select tests.check(
+  (select count(*) from public.admin_role_events where target_user_id = :super_id
+     and previous_role = 'founder' and new_role = 'superadmin' and changed_by is null) = 1,
+  'manual promotion is audited with no changed_by'
+);
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_super, true);
+select tests.check((select count(*) from public.startups) >= 2, 'superadmin keeps every admin read permission');
+select tests.check((select total_startups from public.admin_dashboard_stats()) >= 1, 'superadmin can use admin functions');
+rollback;
+
+-- Founders and regular admins cannot manage access or read the audit log.
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_admin, true);
+select tests.expect_error($$select public.grant_admin_access('d@example.com')$$, '42501', 'admin cannot grant admin access');
+select tests.expect_error(format('select public.revoke_admin_access(%L)', :super_id), '42501', 'admin cannot revoke access');
+select tests.expect_error(format('select public.promote_to_superadmin(%L, %L)', :admin_id, 'admin@example.com'), '42501', 'admin cannot promote themselves');
+select tests.expect_error('select * from public.admin_access_list()', '42501', 'admin cannot list admin users');
+select tests.expect_error($$select * from public.admin_find_user('d@example.com')$$, '42501', 'admin cannot look up users for access');
+select tests.expect_error(
+  format('select private.change_role(%L, array[%L]::public.app_role[], %L)', :admin_id, 'admin', 'superadmin'),
+  '42501', 'admin cannot call the private role writer'
+);
+select tests.expect_error(
+  format('update public.profiles set role = %L where id = %L', 'superadmin', :admin_id),
+  '42501', 'admin cannot write roles directly'
+);
+select tests.check((select count(*) from public.admin_role_events) = 0, 'admin cannot read the audit log');
+select tests.expect_error($$insert into public.admin_role_events (target_email, previous_role, new_role) values ('x', 'founder', 'admin')$$, '42501', 'audit log cannot be written by clients');
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_d, true);
+select tests.expect_error($$select public.grant_admin_access('d@example.com')$$, '42501', 'founder cannot grant themselves admin');
+select tests.expect_error(
+  format('update public.profiles set role = %L where id = %L', 'admin', :founder_d),
+  '42501', 'founder cannot change their own role'
+);
+select tests.check((select count(*) from public.admin_role_events) = 0, 'founder cannot read the audit log');
+rollback;
+
+begin;
+set local role anon;
+select tests.expect_error($$select public.grant_admin_access('d@example.com')$$, '42501', 'anon cannot grant admin access');
+rollback;
+
+-- Superadmin grants, promotes and revokes.
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_super, true);
+select tests.check(
+  (select owns_startup from public.admin_find_user('B@EXAMPLE.COM')),
+  'lookup finds an existing user case-insensitively'
+);
+select tests.check((select count(*) from public.admin_find_user('nobody@example.com')) = 0, 'lookup returns nothing for unknown email');
+select tests.expect_error($$select public.grant_admin_access('nobody@example.com')$$, 'P0002', 'grant needs an existing account');
+select tests.expect_error($$select public.grant_admin_access('b@example.com')$$, 'P0001', 'founder with a startup cannot become admin');
+select public.grant_admin_access(' D@example.com ');
+select tests.expect_error($$select public.grant_admin_access('d@example.com')$$, 'P0001', 'grant refuses existing admins');
+commit;
+
+select tests.check((select role = 'admin' from public.profiles where id = :founder_d), 'superadmin granted admin');
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_d, true);
+select tests.check((select total_startups from public.admin_dashboard_stats()) >= 1, 'new admin can use admin functions');
+select tests.expect_error('select * from public.admin_access_list()', '42501', 'new admin cannot open access management');
+rollback;
+
+begin;
+set local role authenticated;
+select set_config('request.jwt.claims', :claims_super, true);
+select tests.check(
+  (select count(*) from public.admin_access_list()) = 3
+  and (select role from public.admin_access_list() where email = 'd@example.com') = 'admin',
+  'superadmin lists admins and superadmins'
+);
+select tests.expect_error(format('select public.promote_to_superadmin(%L, %L)', :founder_d, 'wrong@example.com'), '22023', 'promotion needs the typed email');
+select public.promote_to_superadmin(:founder_d, 'D@example.com');
+select tests.expect_error(format('select public.revoke_admin_access(%L)', :super_id), '22023', 'self-revoke needs explicit confirmation');
+select public.revoke_admin_access(:founder_d);
+select tests.expect_error(format('select public.revoke_admin_access(%L, true)', :super_id), 'P0001', 'the last superadmin cannot remove their own access');
+commit;
+
+select tests.check(
+  (select role = 'founder' from public.profiles where id = :founder_d)
+  and (select role = 'superadmin' from public.profiles where id = :super_id),
+  'revoked user is a founder again; superadmin unchanged'
+);
+select tests.check(
+  (select string_agg(previous_role || '>' || new_role, ',' order by created_at)
+   from public.admin_role_events where target_user_id = :founder_d and changed_by = :super_id)
+  = 'founder>admin,admin>superadmin,superadmin>founder',
+  'every role change is audited with who made it'
+);
+select tests.check(
+  (select bool_and(changed_by_email = 'owner@example.com') from public.admin_role_events where target_user_id = :founder_d),
+  'audit keeps the actor email for when the actor account is deleted'
+);
+
+-- Database-level protection of the final superadmin.
+select tests.expect_error(
+  format('update public.profiles set role = %L where id = %L', 'admin', :super_id),
+  'P0001', 'final superadmin cannot be demoted even from SQL'
+);
+select tests.expect_error(
+  format('delete from auth.users where id = %L', :super_id),
+  'P0001', 'final superadmin cannot be deleted'
+);
+begin;
+select set_config('innowiut.allow_superadmin_removal', 'on', true);
+update public.profiles set role = 'admin' where id = :super_id;
+rollback;
+select tests.check((select role = 'superadmin' from public.profiles where id = :super_id), 'explicit SQL override is transaction-scoped');
+
 \echo 'All RLS tests passed'

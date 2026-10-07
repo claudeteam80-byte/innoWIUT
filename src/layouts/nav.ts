@@ -1,6 +1,7 @@
 import {
   Building2,
   CalendarClock,
+  KeyRound,
   FileText,
   LayoutDashboard,
   Settings,
@@ -28,3 +29,10 @@ export const adminNavItems: NavItem[] = [
   { label: 'Meeting Requests', to: paths.admin.meetingRequests, icon: CalendarClock },
   { label: 'Settings', to: paths.admin.settings, icon: Settings },
 ];
+
+/** Shown only to superadmins. */
+export const superadminNavItem: NavItem = {
+  label: 'Admin Access',
+  to: paths.admin.access,
+  icon: KeyRound,
+};

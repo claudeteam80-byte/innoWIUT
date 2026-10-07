@@ -419,6 +419,151 @@ await check(
   },
 );
 
+section('Admin access management');
+const owner = {
+  email: 'innowiut-temp-superadmin@example.com',
+  name: `${TEMP_NAME_PREFIX} Superadmin`,
+  password: tempPassword(),
+};
+const candidate = {
+  email: 'innowiut-temp-candidate@example.com',
+  name: `${TEMP_NAME_PREFIX} Candidate`,
+  password: tempPassword(),
+};
+owner.id = await createConfirmedUser({
+  email: owner.email,
+  password: owner.password,
+  fullName: owner.name,
+});
+candidate.id = await createConfirmedUser({
+  email: candidate.email,
+  password: candidate.password,
+  fullName: candidate.name,
+});
+await sql(`update public.profiles set role = 'superadmin' where id = '${owner.id}'`);
+const superadmin = await signedInClient(owner.email, owner.password);
+
+await check('founders, admins and visitors cannot manage admin access', async () => {
+  assertDenied(await a.rpc('grant_admin_access', { p_email: candidate.email }), 'founder grant');
+  assertDenied(await admin.rpc('grant_admin_access', { p_email: candidate.email }), 'admin grant');
+  assertDenied(await admin.rpc('revoke_admin_access', { p_user_id: owner.id }), 'admin revoke');
+  assertDenied(
+    await admin.rpc('promote_to_superadmin', {
+      p_user_id: accounts.admin.id,
+      p_confirm_email: accounts.admin.email,
+    }),
+    'admin self-promotion',
+  );
+  assertDenied(await admin.rpc('admin_access_list'), 'admin list');
+  assertDenied(await anon.rpc('grant_admin_access', { p_email: candidate.email }), 'anon grant');
+});
+await check('admins and founders cannot write roles directly', async () => {
+  assertDenied(
+    await admin.from('profiles').update({ role: 'superadmin' }).eq('id', accounts.admin.id),
+    'admin role write',
+  );
+  assertDenied(
+    await a.from('profiles').update({ role: 'admin' }).eq('id', accounts.a.id),
+    'founder role write',
+  );
+});
+await check('only superadmins can read the role audit log', async () => {
+  const forAdmin = await admin.from('admin_role_events').select('id');
+  const forFounder = await a.from('admin_role_events').select('id');
+  assert(
+    !forAdmin.error &&
+      forAdmin.data.length === 0 &&
+      !forFounder.error &&
+      forFounder.data.length === 0,
+    'audit log visible',
+  );
+  assertDenied(
+    await superadmin
+      .from('admin_role_events')
+      .insert({ target_email: 'x', previous_role: 'founder', new_role: 'admin' }),
+    'audit insert',
+  );
+});
+await check('superadmin grants admin; the new admin can sign in and use admin data', async () => {
+  const granted = await superadmin.rpc('grant_admin_access', {
+    p_email: candidate.email.toUpperCase(),
+  });
+  if (granted.error) throw granted.error;
+  const promoted = await signedInClient(candidate.email, candidate.password);
+  const stats = await promoted.rpc('admin_dashboard_stats');
+  assert(!stats.error && stats.data.length === 1, 'promoted admin cannot read stats');
+  candidate.client = promoted;
+});
+await check('superadmin revokes admin; admin data is refused immediately', async () => {
+  const revoked = await superadmin.rpc('revoke_admin_access', { p_user_id: candidate.id });
+  if (revoked.error) throw revoked.error;
+  assertDenied(
+    await candidate.client.rpc('admin_dashboard_stats'),
+    'revoked admin still reads stats',
+  );
+  const startups = await candidate.client.from('startups').select('id');
+  assert(!startups.error && startups.data.length === 0, 'revoked admin still reads startups');
+});
+await check('every role change is audited with who made it', async () => {
+  const { data, error } = await superadmin
+    .from('admin_role_events')
+    .select('previous_role, new_role, changed_by')
+    .eq('target_user_id', candidate.id)
+    .order('created_at');
+  if (error) throw error;
+  assert(
+    data.map((e) => `${e.previous_role}>${e.new_role}`).join(',') ===
+      'founder>admin,admin>founder' && data.every((e) => e.changed_by === owner.id),
+    JSON.stringify(data),
+  );
+});
+await check(
+  'promotion needs the typed email; self-removal needs explicit confirmation',
+  async () => {
+    assertDenied(
+      await superadmin.rpc('promote_to_superadmin', {
+        p_user_id: accounts.admin.id,
+        p_confirm_email: 'wrong@example.com',
+      }),
+      'promotion without typed email',
+    );
+    assertDenied(
+      await superadmin.rpc('revoke_admin_access', { p_user_id: owner.id }),
+      'self-removal without confirmation',
+    );
+  },
+);
+await check('the final superadmin cannot be demoted or deleted', async () => {
+  const [{ n }] = await sql(
+    `select count(*)::int as n from public.profiles where role = 'superadmin'`,
+  );
+  if (n === 1) {
+    assertDenied(
+      await superadmin.rpc('revoke_admin_access', { p_user_id: owner.id, p_confirm_self: true }),
+      'last superadmin removed themselves',
+    );
+  }
+  // Demote every superadmin in one statement inside a rolled-back transaction: the guard must refuse.
+  let refused = false;
+  try {
+    await sql(
+      `begin; update public.profiles set role = 'admin' where role = 'superadmin'; rollback;`,
+    );
+  } catch (error) {
+    refused = /at least one superadmin/.test(error.message);
+  }
+  assert(refused, 'demoting every superadmin was not refused');
+  let deleteRefused = false;
+  try {
+    await sql(
+      `begin; delete from auth.users where id in (select id from public.profiles where role = 'superadmin'); rollback;`,
+    );
+  } catch (error) {
+    deleteRefused = /at least one superadmin/.test(error.message);
+  }
+  assert(deleteRefused, 'deleting every superadmin was not refused');
+});
+
 section('Database functions and views');
 await check(
   'activity_status() boundaries: 0–7 active, 8–14 needs_update, 15+ inactive, null inactive',

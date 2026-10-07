@@ -68,6 +68,10 @@ const AdminMeetingRequestsPage = page(
   () => import('@/features/admin/pages/AdminMeetingRequestsPage'),
   (m) => m.AdminMeetingRequestsPage,
 );
+const AdminAccessPage = page(
+  () => import('@/features/admin/pages/AdminAccessPage'),
+  (m) => m.AdminAccessPage,
+);
 const AdminSettingsPage = page(
   () => import('@/features/admin/pages/AdminSettingsPage'),
   (m) => m.AdminSettingsPage,
@@ -132,6 +136,11 @@ export const routes: RouteObject[] = [
           { path: paths.admin.mentors, element: <AdminMentorsPage /> },
           { path: paths.admin.meetingRequests, element: <AdminMeetingRequestsPage /> },
           { path: paths.admin.settings, element: <AdminSettingsPage /> },
+          {
+            // Superadmin only. Regular admins are redirected to the admin dashboard.
+            element: <RequireRole role="superadmin" />,
+            children: [{ path: paths.admin.access, element: <AdminAccessPage /> }],
+          },
         ],
       },
     ],

@@ -99,6 +99,30 @@ describe('AdminLoginPage', () => {
   });
 });
 
+describe('superadmin sign in', () => {
+  it('is accepted at the admin login', async () => {
+    const user = userEvent.setup();
+    api.signInWithPassword.mockResolvedValue({ user: { id: 'superadmin-user-id' } });
+    api.fetchProfile.mockResolvedValue(makeProfile('superadmin'));
+    renderLogin('/admin/login');
+    await submit(user, 'owner@example.com', 'Sign In to Admin Dashboard');
+    expect(
+      await screen.findByRole('heading', { name: 'Landed on /admin/dashboard' }),
+    ).toBeInTheDocument();
+    expect(api.signOutLocal).not.toHaveBeenCalled();
+  });
+
+  it('is refused at the founder login', async () => {
+    const user = userEvent.setup();
+    api.signInWithPassword.mockResolvedValue({ user: { id: 'superadmin-user-id' } });
+    api.fetchProfile.mockResolvedValue(makeProfile('superadmin'));
+    renderLogin('/founder/login');
+    await submit(user, 'owner@example.com', 'Sign In');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Use Admin access/);
+    expect(api.signOutLocal).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('FounderLoginPage', () => {
   it('refuses admin accounts and points them to admin access', async () => {
     const user = userEvent.setup();

@@ -31,10 +31,23 @@ if (objects.length > 0) {
 }
 console.log(`storage objects removed: ${objects.length}`);
 
-const users = await sql(`delete from auth.users where email like ${like} returning email`);
+// Temporary superadmins may be the only superadmin while testing; the
+// last-superadmin guard is overridden for this transaction and for temp accounts only.
+const users = await sql(`
+  begin;
+  select set_config('innowiut.allow_superadmin_removal', 'on', true);
+  delete from auth.users where email like ${like} returning email;
+  commit;
+`);
 console.log(
   `auth users removed: ${users.length}${users.length ? ` (${users.map((u) => u.email).join(', ')})` : ''}`,
 );
+
+// Role-change events are permanent in production; only test accounts' events are removed.
+const events = await sql(
+  `delete from public.admin_role_events where target_email like ${like} returning id`,
+);
+console.log(`role events removed: ${events.length}`);
 
 const mentors = await sql(
   `delete from public.mentors where name like '${TEMP_NAME_PREFIX}%' returning name`,
@@ -46,6 +59,7 @@ const [remaining] = await sql(`
     (select count(*) from auth.users where email like ${like}) as temp_users,
     (select count(*) from public.profiles where email like ${like}) as temp_profiles,
     (select count(*) from public.mentors where name like '${TEMP_NAME_PREFIX}%') as temp_mentors,
+    (select count(*) from public.admin_role_events where target_email like ${like}) as temp_role_events,
     (select count(*) from public.startups where name like '${TEMP_NAME_PREFIX}%') as temp_startups,
     (select count(*) from storage.objects where split_part(name, '/', 1) in (${folderList})) as temp_objects
 `);

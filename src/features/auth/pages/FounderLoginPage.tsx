@@ -7,6 +7,7 @@ import { paths } from '@/app/paths';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { isAdminRole } from '@/routes/guards/access';
 import { useSignedInRedirect } from '@/routes/guards/useSignedInRedirect';
 import { fetchProfile, signInWithPassword, signOutLocal } from '../api';
 import { AuthHeading, FounderAuthLayout } from '../components/AuthLayout';
@@ -41,7 +42,7 @@ export function FounderLoginPage() {
       if (profile?.role !== 'founder') {
         await signOutLocal();
         setFormError(
-          profile?.role === 'admin'
+          isAdminRole(profile?.role)
             ? 'This is an innoWIUT admin account. Use Admin access to sign in.'
             : "We couldn't load your founder account. Please try again.",
         );

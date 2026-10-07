@@ -83,7 +83,12 @@ function AdminProfileCard({ profile }: { profile: Profile }) {
           {...register('full_name')}
         />
         <TextField label="Admin email" value={profile.email} readOnly disabled />
-        <TextField label="Access level" value="innoWIUT Administration" readOnly disabled />
+        <TextField
+          label="Access level"
+          value={profile.role === 'superadmin' ? 'Superadmin — manages admin access' : 'Admin'}
+          readOnly
+          disabled
+        />
         <div className="flex items-end justify-end">
           <Button
             type="submit"

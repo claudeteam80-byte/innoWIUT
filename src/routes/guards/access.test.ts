@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isAdminRole,
   resolveHomeRedirect,
+  roleSatisfies,
   resolveOnboardingAccess,
   resolveRoleAccess,
   resolveSignedInRedirect,
@@ -167,5 +169,61 @@ describe('resolveSignedInRedirect', () => {
     expect(resolveSignedInRedirect(session('signed_in', 'ready', 'founder'))).toBe(
       '/founder/dashboard',
     );
+  });
+});
+
+describe('superadmin role', () => {
+  it('shares the admin area', () => {
+    expect(isAdminRole('superadmin')).toBe(true);
+    expect(isAdminRole('admin')).toBe(true);
+    expect(isAdminRole('founder')).toBe(false);
+    expect(roleSatisfies('superadmin', 'admin')).toBe(true);
+    expect(
+      resolveRoleAccess({
+        ...session('signed_in', 'ready', 'superadmin'),
+        requiredRole: 'admin',
+        location,
+      }),
+    ).toEqual({ kind: 'allow' });
+  });
+
+  it('is the only role allowed into superadmin areas', () => {
+    expect(roleSatisfies('admin', 'superadmin')).toBe(false);
+    expect(roleSatisfies('founder', 'superadmin')).toBe(false);
+    expect(
+      resolveRoleAccess({
+        ...session('signed_in', 'ready', 'admin'),
+        requiredRole: 'superadmin',
+        location,
+      }),
+    ).toEqual({ kind: 'redirect', to: '/admin/dashboard' });
+    expect(
+      resolveRoleAccess({
+        ...session('signed_in', 'ready', 'founder'),
+        requiredRole: 'superadmin',
+        location,
+      }),
+    ).toEqual({ kind: 'redirect', to: '/founder/dashboard' });
+    expect(
+      resolveRoleAccess({
+        ...session('signed_in', 'ready', 'superadmin'),
+        requiredRole: 'superadmin',
+        location,
+      }),
+    ).toEqual({ kind: 'allow' });
+  });
+
+  it('is kept out of the founder area and sent home to the admin dashboard', () => {
+    expect(
+      resolveRoleAccess({
+        ...session('signed_in', 'ready', 'superadmin'),
+        requiredRole: 'founder',
+        location,
+      }),
+    ).toEqual({ kind: 'redirect', to: '/admin/dashboard' });
+    expect(resolveHomeRedirect(session('signed_in', 'ready', 'superadmin'))).toEqual({
+      kind: 'redirect',
+      to: '/admin/dashboard',
+    });
   });
 });
