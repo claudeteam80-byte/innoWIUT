@@ -328,11 +328,30 @@ try {
       if (LOGIN[role]) {
         const [path, acct, button] = LOGIN[role];
         current = `${role}@${vp.name} login`;
-        await page.goto(`${BASE}${path}`);
-        await page.getByLabel(/email/i).fill(acct.email);
-        await page.getByLabel(/^password/i).fill(acct.password);
-        await page.getByRole('button', { name: button }).click();
-        await page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 20000 });
+        try {
+          await page.goto(`${BASE}${path}`);
+          await page.getByLabel(/email/i).fill(acct.email);
+          await page.getByLabel(/^password/i).fill(acct.password);
+          await page.getByRole('button', { name: button }).click();
+          await page.waitForURL((u) => !u.pathname.endsWith('/login'), { timeout: 20000 });
+        } catch (error) {
+          // Record it and move on, so one failure does not hide the rest of the audit.
+          const text = await page
+            .locator('body')
+            .innerText()
+            .catch(() => '');
+          report(
+            current,
+            'login failed',
+            `${error.message.split('\n')[0]} — page: ${text.slice(0, 120)}`,
+          );
+          if (shots) {
+            mkdirSync(shots, { recursive: true });
+            await page.screenshot({ path: `${shots}/FAIL-${role}-${vp.name}-login.png` });
+          }
+          await context.close();
+          continue;
+        }
       }
       for (const route of routesFor(role, startupId)) {
         current = `${role}@${vp.name} ${route}`;
