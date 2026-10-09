@@ -343,16 +343,185 @@ export type Database = {
         };
         Relationships: [];
       };
+      stage_evidence: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          evidence_type: Database['public']['Enums']['evidence_type'];
+          file_path: string | null;
+          id: string;
+          label: string;
+          linked_metric_id: string | null;
+          requirement_id: string | null;
+          stage: Database['public']['Enums']['startup_stage'];
+          startup_id: string;
+          text_value: string | null;
+          update_id: string | null;
+          url: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          evidence_type: Database['public']['Enums']['evidence_type'];
+          file_path?: string | null;
+          id?: string;
+          label: string;
+          linked_metric_id?: string | null;
+          requirement_id?: string | null;
+          stage: Database['public']['Enums']['startup_stage'];
+          startup_id: string;
+          text_value?: string | null;
+          update_id?: string | null;
+          url?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          evidence_type?: Database['public']['Enums']['evidence_type'];
+          file_path?: string | null;
+          id?: string;
+          label?: string;
+          linked_metric_id?: string | null;
+          requirement_id?: string | null;
+          stage?: Database['public']['Enums']['startup_stage'];
+          startup_id?: string;
+          text_value?: string | null;
+          update_id?: string | null;
+          url?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stage_evidence_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_evidence_linked_metric_id_fkey';
+            columns: ['linked_metric_id'];
+            isOneToOne: false;
+            referencedRelation: 'traction_metrics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_evidence_requirement_id_fkey';
+            columns: ['requirement_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_stage_requirements';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_evidence_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'stage_evidence_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_evidence_update_id_fkey';
+            columns: ['update_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_updates';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      startup_stage_requirements: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          description: string | null;
+          id: string;
+          linked_metric_id: string | null;
+          progress_target: number | null;
+          progress_value: number | null;
+          required: boolean;
+          requirement_key: string;
+          stage: Database['public']['Enums']['startup_stage'];
+          startup_id: string;
+          status: Database['public']['Enums']['requirement_status'];
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          linked_metric_id?: string | null;
+          progress_target?: number | null;
+          progress_value?: number | null;
+          required?: boolean;
+          requirement_key: string;
+          stage: Database['public']['Enums']['startup_stage'];
+          startup_id: string;
+          status?: Database['public']['Enums']['requirement_status'];
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          linked_metric_id?: string | null;
+          progress_target?: number | null;
+          progress_value?: number | null;
+          required?: boolean;
+          requirement_key?: string;
+          stage?: Database['public']['Enums']['startup_stage'];
+          startup_id?: string;
+          status?: Database['public']['Enums']['requirement_status'];
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'startup_stage_requirements_linked_metric_id_fkey';
+            columns: ['linked_metric_id'];
+            isOneToOne: false;
+            referencedRelation: 'traction_metrics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'startup_stage_requirements_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'startup_stage_requirements_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       startup_updates: {
         Row: {
           author_id: string | null;
+          blocker: string | null;
           challenge: string | null;
           created_at: string;
           highlights: string[];
           id: string;
           image_path: string | null;
           link_url: string | null;
+          linked_stage: Database['public']['Enums']['startup_stage'] | null;
+          next_milestone: string | null;
+          next_milestone_date: string | null;
           next_steps: string | null;
+          progress_types: string[];
           published_at: string | null;
           startup_id: string;
           status: Database['public']['Enums']['update_status'];
@@ -363,13 +532,18 @@ export type Database = {
         };
         Insert: {
           author_id?: string | null;
+          blocker?: string | null;
           challenge?: string | null;
           created_at?: string;
           highlights?: string[];
           id?: string;
           image_path?: string | null;
           link_url?: string | null;
+          linked_stage?: Database['public']['Enums']['startup_stage'] | null;
+          next_milestone?: string | null;
+          next_milestone_date?: string | null;
           next_steps?: string | null;
+          progress_types?: string[];
           published_at?: string | null;
           startup_id: string;
           status?: Database['public']['Enums']['update_status'];
@@ -380,13 +554,18 @@ export type Database = {
         };
         Update: {
           author_id?: string | null;
+          blocker?: string | null;
           challenge?: string | null;
           created_at?: string;
           highlights?: string[];
           id?: string;
           image_path?: string | null;
           link_url?: string | null;
+          linked_stage?: Database['public']['Enums']['startup_stage'] | null;
+          next_milestone?: string | null;
+          next_milestone_date?: string | null;
           next_steps?: string | null;
+          progress_types?: string[];
           published_at?: string | null;
           startup_id?: string;
           status?: Database['public']['Enums']['update_status'];
@@ -431,6 +610,7 @@ export type Database = {
           has_users: boolean | null;
           id: string;
           industry: string | null;
+          journey_stage: Database['public']['Enums']['startup_stage'];
           logo_path: string | null;
           main_goal: string | null;
           name: string;
@@ -453,6 +633,7 @@ export type Database = {
           has_users?: boolean | null;
           id?: string;
           industry?: string | null;
+          journey_stage?: Database['public']['Enums']['startup_stage'];
           logo_path?: string | null;
           main_goal?: string | null;
           name: string;
@@ -475,6 +656,7 @@ export type Database = {
           has_users?: boolean | null;
           id?: string;
           industry?: string | null;
+          journey_stage?: Database['public']['Enums']['startup_stage'];
           logo_path?: string | null;
           main_goal?: string | null;
           name?: string;
@@ -754,6 +936,13 @@ export type Database = {
           role: Database['public']['Enums']['app_role'];
         }[];
       };
+      admin_stage_distribution: {
+        Args: never;
+        Returns: {
+          stage: Database['public']['Enums']['startup_stage'];
+          startups: number;
+        }[];
+      };
       admin_startup_list: {
         Args: {
           p_activity?: string;
@@ -774,6 +963,7 @@ export type Database = {
           growth_percent: number;
           id: string;
           industry: string;
+          journey_stage: Database['public']['Enums']['startup_stage'];
           last_active_on: string;
           logo_path: string;
           mentor_id: string;
@@ -903,8 +1093,19 @@ export type Database = {
     Enums: {
       app_role: 'founder' | 'admin' | 'superadmin';
       currency_code: 'USD' | 'UZS';
+      evidence_type:
+        | 'link'
+        | 'screenshot'
+        | 'document'
+        | 'metric'
+        | 'customer_feedback'
+        | 'product_url'
+        | 'text_note';
       meeting_request_status: 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
       metric_unit: 'number' | 'currency' | 'percent';
+      requirement_status: 'not_started' | 'in_progress' | 'ready_for_review' | 'completed';
+      startup_stage:
+        'idea' | 'validation' | 'mvp' | 'traction' | 'investor_readiness' | 'investor_access';
       update_status: 'draft' | 'published';
     };
     CompositeTypes: {
@@ -1029,8 +1230,26 @@ export const Constants = {
     Enums: {
       app_role: ['founder', 'admin', 'superadmin'],
       currency_code: ['USD', 'UZS'],
+      evidence_type: [
+        'link',
+        'screenshot',
+        'document',
+        'metric',
+        'customer_feedback',
+        'product_url',
+        'text_note',
+      ],
       meeting_request_status: ['requested', 'confirmed', 'completed', 'declined', 'cancelled'],
       metric_unit: ['number', 'currency', 'percent'],
+      requirement_status: ['not_started', 'in_progress', 'ready_for_review', 'completed'],
+      startup_stage: [
+        'idea',
+        'validation',
+        'mvp',
+        'traction',
+        'investor_readiness',
+        'investor_access',
+      ],
       update_status: ['draft', 'published'],
     },
   },
