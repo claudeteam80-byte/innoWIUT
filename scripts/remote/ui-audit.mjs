@@ -199,6 +199,8 @@ function routesFor(role, startupId) {
   if (role === 'founder')
     return [
       '/founder/dashboard',
+      '/founder/journey',
+      '/founder/journey/traction',
       '/founder/traction',
       '/founder/updates',
       '/founder/mentor',
@@ -212,6 +214,7 @@ function routesFor(role, startupId) {
     '/admin/dashboard',
     '/admin/startups',
     `/admin/startups/${startupId}`,
+    `/admin/startups/${startupId}?tab=journey`,
     '/admin/mentors',
     '/admin/meeting-requests',
     '/admin/settings',
