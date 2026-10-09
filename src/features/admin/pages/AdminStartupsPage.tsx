@@ -13,7 +13,8 @@ import { inputClasses } from '@/components/ui/TextField';
 import { ACTIVITY_FILTERS } from '@/domain/activity';
 import { formatRelativeDay } from '@/domain/dates';
 import { formatMetricValue } from '@/domain/format';
-import { INDUSTRIES, STAGES } from '@/domain/options';
+import { INDUSTRIES } from '@/domain/options';
+import { JOURNEY_STAGES, stageName } from '@/domain/journey';
 import { describeMetricChange } from '@/domain/traction';
 import { ChangePill } from '@/features/traction/components/ChangePill';
 import { cn } from '@/lib/cn';
@@ -79,7 +80,10 @@ export function AdminStartupsPage() {
           value={params.stage}
           onChange={(e) => update({ stage: e.target.value })}
           placeholder="All stages"
-          options={STAGES}
+          options={JOURNEY_STAGES.filter((stage) => !stage.locked).map((stage) => ({
+            value: stage.key,
+            label: stage.name,
+          }))}
         />
         <SelectField
           label="Industry"
@@ -235,7 +239,7 @@ function StartupTable({ rows }: { rows: StartupListRow[] }) {
               </td>
               <td className={cn(cell, 'text-muted')}>
                 <span className="block truncate text-ink">{row.industry ?? '—'}</span>
-                <span className="block truncate text-[12px]">{row.stage ?? '—'}</span>
+                <span className="block truncate text-[12px]">{stageName(row.journey_stage)}</span>
               </td>
               <td className={cell}>
                 {row.primary_metric_name ? (
@@ -298,7 +302,7 @@ function StartupCards({ rows }: { rows: StartupListRow[] }) {
                 </div>
                 <p className="truncate text-[12.5px] text-muted">
                   {row.founder_name || 'Founder'} ·{' '}
-                  {[row.industry, row.stage].filter(Boolean).join(' · ')}
+                  {[row.industry, stageName(row.journey_stage)].filter(Boolean).join(' · ')}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]">
                   <span className="text-muted">{row.primary_metric_name ?? 'No metrics'}</span>

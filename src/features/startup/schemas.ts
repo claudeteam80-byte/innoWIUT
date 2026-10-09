@@ -6,14 +6,13 @@ import {
   requiredInt,
   requiredText,
 } from '@/domain/form-fields';
-import { INDUSTRIES, STAGES } from '@/domain/options';
+import { INDUSTRIES } from '@/domain/options';
 
 export const startupInfoFields = {
   name: requiredText('Enter your startup name.', 120),
   tagline: requiredText('Add a one-line description.', 200),
   description: optionalText(4000),
   industry: z.enum(INDUSTRIES, { error: 'Choose an industry.' }),
-  stage: z.enum(STAGES, { error: 'Choose a stage.' }),
   website: optionalUrl(),
   founded_year: requiredInt(
     'Enter the year you started.',

@@ -2,9 +2,11 @@
 //
 //   npm run build && npx vite preview --port 4175 --strictPort &   # app using .env.local
 //   npm run remote:journey -- --email=you+innowiut-temp-journey@gmail.com
+//   npm run remote:journey -- --no-email   # pre-confirmed account, real login screen, no email
 //
 // Signs up through the UI (Supabase sends a real 6-digit code email), verifies,
-// onboards, records traction, publishes an update, edits the profile and team,
+// onboards, records traction, works the Startup Journey (requirements, evidence,
+// traction proof, no auto-advance), publishes a structured update, edits the profile and team,
 // requests a mentor meeting after a temporary mentor is assigned, then reloads to
 // check persistence. Every record is labelled and removed at the end (files through
 // the Storage API, rows via scripts/remote/cleanup.mjs).
@@ -15,6 +17,7 @@ import { chromium } from 'playwright';
 import {
   assert,
   check as baseCheck,
+  createConfirmedUser,
   newClient,
   section,
   sql,
@@ -30,7 +33,8 @@ const arg = (name) =>
     ?.split('=')
     .slice(1)
     .join('=');
-const email = (arg('email') ?? '').toLowerCase();
+const noEmail = process.argv.includes('--no-email');
+const email = (arg('email') ?? (noEmail ? 'innowiut-temp-journey@example.com' : '')).toLowerCase();
 const shots = arg('screenshots');
 assert(email.includes(TEMP_EMAIL_MARKER), `--email must contain "${TEMP_EMAIL_MARKER}"`);
 const password = `Journey-${Date.now()}-Pw`;
@@ -92,27 +96,46 @@ const check = (label, fn) =>
   });
 
 try {
-  section('Signup and email verification');
-  await check('founder signs up through the real signup form', async () => {
-    await page.goto(`${BASE}/founder/signup`);
-    await page.getByLabel('Full Name').fill(`${TEMP_NAME_PREFIX} Journey Founder`);
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password', { exact: true }).fill(password);
-    await page.getByLabel('Confirm Password').fill(password);
-    await page.getByLabel(/I agree/).check();
-    await page.getByRole('button', { name: 'Create Founder Account' }).click();
-    await page.waitForURL(/\/founder\/verify-email/, { timeout: 20000 });
-  });
-  await check(
-    'the 6-digit code from the email verifies the account and opens onboarding',
-    async () => {
-      const code = await emailedCode();
-      await page.getByLabel('Verification code').fill(code);
-      await page.getByRole('button', { name: 'Verify' }).click();
+  if (noEmail) {
+    // No email is sent: the account is created confirmed (same signup trigger as a real
+    // signup) and signs in through the real founder login screen.
+    section('Account (no email) and sign in');
+    await check('confirmed founder account signs in through the login form', async () => {
+      await createConfirmedUser({
+        email,
+        password,
+        fullName: `${TEMP_NAME_PREFIX} Journey Founder`,
+      });
+      await page.goto(`${BASE}/founder/login`);
+      await page.getByLabel(/email/i).fill(email);
+      await page.getByLabel(/^password/i).fill(password);
+      await page.getByRole('button', { name: 'Sign In' }).click();
       await page.waitForURL(/\/founder\/onboarding/, { timeout: 20000 });
       await page.getByRole('heading', { name: 'About you' }).waitFor();
-    },
-  );
+    });
+  } else {
+    section('Signup and email verification');
+    await check('founder signs up through the real signup form', async () => {
+      await page.goto(`${BASE}/founder/signup`);
+      await page.getByLabel('Full Name').fill(`${TEMP_NAME_PREFIX} Journey Founder`);
+      await page.getByLabel('Email').fill(email);
+      await page.getByLabel('Password', { exact: true }).fill(password);
+      await page.getByLabel('Confirm Password').fill(password);
+      await page.getByLabel(/I agree/).check();
+      await page.getByRole('button', { name: 'Create Founder Account' }).click();
+      await page.waitForURL(/\/founder\/verify-email/, { timeout: 20000 });
+    });
+    await check(
+      'the 6-digit code from the email verifies the account and opens onboarding',
+      async () => {
+        const code = await emailedCode();
+        await page.getByLabel('Verification code').fill(code);
+        await page.getByRole('button', { name: 'Verify' }).click();
+        await page.waitForURL(/\/founder\/onboarding/, { timeout: 20000 });
+        await page.getByRole('heading', { name: 'About you' }).waitFor();
+      },
+    );
+  }
   await check('dashboard is blocked until onboarding is complete', async () => {
     await page.goto(`${BASE}/founder/dashboard`);
     await page.waitForURL(/\/founder\/onboarding/, { timeout: 15000 });
@@ -179,6 +202,12 @@ try {
       await page.getByText('No updates yet').waitFor();
       await page.getByText('No mentor assigned yet.').waitFor();
       await page.getByText('Reach 1,000 learners').waitFor();
+      // V2.1: current stage card + deterministic next best action from the MVP template.
+      const stageCard = page.getByRole('region', { name: /^03/ });
+      await stageCard.getByText('0 of 6 requirements completed').waitFor();
+      await stageCard.getByText('Complete "Working MVP"').waitFor();
+      await page.getByRole('heading', { name: 'Next best action' }).waitFor();
+      await page.getByRole('link', { name: 'Continue Journey' }).waitFor();
       const logo = page
         .locator(`img[src*="/storage/v1/object/public/startup-logos/${startupId}/"]`)
         .first();
@@ -237,61 +266,206 @@ try {
     await shot('06-traction');
   });
 
-  section('Updates');
-  await check('save a draft with only a title', async () => {
+  section('Startup Journey');
+  const PDF = Buffer.from('%PDF-1.4\n%innowiut-temp evidence\n%%EOF\n');
+  await check(
+    'Continue Journey opens the journey at the current stage with locked investor stages',
+    async () => {
+      await page.goto(`${BASE}/founder/dashboard`);
+      await page.getByRole('link', { name: 'Continue Journey' }).click();
+      await page.waitForURL(/\/founder\/journey$/);
+      await page.getByRole('heading', { name: 'Startup Journey' }).waitFor();
+      await page.getByRole('heading', { name: 'MVP', level: 2, exact: true }).waitFor();
+      await page.getByLabel('Investor Readiness — Locked').waitFor();
+      await page.getByLabel('Investor Access — Locked').waitFor();
+      assert(
+        (await page.getByRole('button', { name: /Investor/ }).count()) === 0,
+        'locked stage is clickable',
+      );
+      await shot('07-journey');
+    },
+  );
+  await check('founder completes a requirement; progress and next action update', async () => {
+    const row = page.locator('li', { has: page.getByRole('heading', { name: 'Working MVP' }) });
+    await row.getByRole('button', { name: 'Update', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Working MVP' });
+    await dialog.getByLabel('Status').selectOption('completed');
+    await dialog.getByRole('button', { name: 'Save Progress' }).click();
+    await toast('Working MVP updated.');
+    await page.getByText('1 of 6 requirements completed').first().waitFor();
+    await page.getByText('Complete "Product URL"').first().waitFor();
+    const [req] = await sql(
+      `select status, completed_at from public.startup_stage_requirements where startup_id = ${q(startupId)} and requirement_key = 'working_mvp'`,
+    );
+    assert(req.status === 'completed' && req.completed_at, JSON.stringify(req));
+  });
+  await check('founder adds a product URL and a PDF document as evidence', async () => {
+    const row = page.locator('li', { has: page.getByRole('heading', { name: 'Product URL' }) });
+    await row.getByRole('button', { name: 'Add Evidence' }).click();
+    let dialog = page.getByRole('dialog', { name: 'Add evidence' });
+    await dialog.getByLabel('Evidence type').selectOption('product_url');
+    await dialog.getByLabel('Label').fill(`${TEMP_NAME_PREFIX} live product`);
+    await dialog.getByLabel('Product URL').fill('example.com/innowiut-temp-app');
+    await dialog.getByRole('button', { name: 'Add Evidence' }).click();
+    await toast('Evidence added');
+    await page.getByRole('button', { name: 'Add Evidence' }).first().click();
+    dialog = page.getByRole('dialog', { name: 'Add evidence' });
+    await dialog.getByLabel('Evidence type').selectOption('document');
+    await dialog.getByLabel('Label').fill(`${TEMP_NAME_PREFIX} user test notes`);
+    await dialog
+      .getByLabel(/^Document/)
+      .setInputFiles({ name: 'notes.pdf', mimeType: 'application/pdf', buffer: PDF });
+    await dialog.getByRole('button', { name: 'Add Evidence' }).click();
+    await toast('Evidence added');
+    await page.getByText(`${TEMP_NAME_PREFIX} user test notes`).waitFor();
+    await page.getByRole('link', { name: 'Open document' }).waitFor();
+    const rows = await sql(
+      `select evidence_type, url, file_path, requirement_id is not null as linked from public.stage_evidence where startup_id = ${q(startupId)} order by created_at`,
+    );
+    assert(rows.length === 2, JSON.stringify(rows));
+    assert(
+      rows[0].url === 'https://example.com/innowiut-temp-app' && rows[0].linked,
+      JSON.stringify(rows[0]),
+    );
+    assert(rows[1].file_path?.startsWith(`${startupId}/evidence-`), JSON.stringify(rows[1]));
+    await shot('08-journey-evidence');
+  });
+  await check(
+    'completing every MVP requirement shows completion but never moves the stage',
+    async () => {
+      for (const title of [
+        'Product URL',
+        'Demo',
+        'User Testing',
+        'User Feedback',
+        'Core Workflow',
+      ]) {
+        const row = page.locator('li', { has: page.getByRole('heading', { name: title }) });
+        await row.getByRole('button', { name: 'Update', exact: true }).click();
+        const dialog = page.getByRole('dialog', { name: title });
+        await dialog.getByLabel('Status').selectOption('completed');
+        if (title === 'User Testing') await dialog.getByLabel(/^Progress/).fill('6');
+        await dialog.getByRole('button', { name: 'Save Progress' }).click();
+        await toast(`${title} updated.`);
+      }
+      await page.getByText('6 of 6 requirements completed').first().waitFor();
+      await page.getByText('Stage requirements completed').first().waitFor();
+      await page.getByText(/Your stage stays MVP until then/).waitFor();
+      const [row] = await sql(
+        `select stage, journey_stage from public.startups where id = ${q(startupId)}`,
+      );
+      assert(row.journey_stage === 'mvp' && row.stage === 'MVP', JSON.stringify(row));
+      await shot('09-journey-complete');
+    },
+  );
+  await check(
+    'traction proof links the existing Active Users metric (values not copied)',
+    async () => {
+      const [before] = await sql(
+        `select count(*)::int n from public.traction_entries where startup_id = ${q(startupId)}`,
+      );
+      await page.getByRole('button', { name: /^Traction — Upcoming/ }).click();
+      await page.waitForURL(/\/founder\/journey\/traction$/);
+      await page.getByText('No traction metrics selected yet.').waitFor();
+      await page.getByRole('button', { name: 'Select Metrics' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Choose your traction metrics' });
+      await dialog.getByLabel('Active Users', { exact: true }).check();
+      assert(
+        (await dialog.getByLabel('Traction metric for Active Users').inputValue()) !== '',
+        'existing metric was not suggested',
+      );
+      await dialog.getByRole('button', { name: 'Save Metrics' }).click();
+      await toast('Traction proof updated');
+      await page.getByText('Active Users:').first().waitFor();
+      const [req] = await sql(`
+      select r.title, m.name as metric from public.startup_stage_requirements r
+      join public.traction_metrics m on m.id = r.linked_metric_id
+      where r.startup_id = ${q(startupId)} and r.stage = 'traction'`);
+      assert(req?.metric === 'Active Users', JSON.stringify(req));
+      const [after] = await sql(
+        `select count(*)::int n from public.traction_entries where startup_id = ${q(startupId)}`,
+      );
+      assert(before.n === after.n, 'traction entries changed');
+    },
+  );
+
+  section('Structured updates');
+  await check('save a draft with only a headline', async () => {
     await page.goto(`${BASE}/founder/updates`);
     await page.getByRole('button', { name: 'Create Update' }).first().click();
     const dialog = page.getByRole('dialog', { name: 'New update' });
-    await dialog.getByLabel('Update title').fill(`${TEMP_NAME_PREFIX} Weekly update`);
+    await dialog.getByLabel('Headline').fill(`${TEMP_NAME_PREFIX} Weekly update`);
+    assert((await dialog.getByLabel('Linked stage').inputValue()) === 'mvp', 'stage default');
     await dialog.getByRole('button', { name: 'Save Draft' }).click();
     await toast('Draft saved.');
     await page.getByRole('tab', { name: /Drafts/ }).click();
     await page.getByText(`${TEMP_NAME_PREFIX} Weekly update`).waitFor();
   });
-  await check('edit the draft with highlights, image and link, then publish', async () => {
-    await page.getByRole('button', { name: /Edit draft/ }).click();
+  await check('publishing needs what moved and a progress type', async () => {
+    await page.getByRole('button', { name: /^Publish$/ }).click();
     const dialog = page.getByRole('dialog', { name: 'Edit draft' });
-    await dialog.getByLabel('What happened?').fill('Shipped the temporary validation build.');
-    await dialog.getByLabel('Highlight 1', { exact: true }).fill('First highlight');
-    await dialog.getByRole('button', { name: 'Add highlight' }).click();
-    await dialog.getByLabel('Highlight 2', { exact: true }).fill('Second highlight');
-    await dialog.getByLabel('Next steps').fill('Clean up test data');
-    await dialog.getByLabel('External link').fill('example.com/innowiut-temp');
-    await dialog
-      .getByLabel('Image (optional)')
-      .setInputFiles({ name: 'update.png', mimeType: 'image/png', buffer: PNG });
-    await shot('07-update-dialog');
+    await dialog.waitFor();
     await dialog.getByRole('button', { name: 'Publish Update' }).click();
-    await toast('Update published');
-    await page.getByRole('tab', { name: /Published/ }).click();
-    await page.getByText('Second highlight').waitFor();
-    const image = page.locator('img[src*="/storage/v1/object/sign/update-attachments/"]').first();
-    await image.waitFor({ state: 'attached' });
-    await page.waitForFunction(
-      () =>
-        [...document.querySelectorAll('img')].some(
-          (img) =>
-            img.src.includes('/object/sign/update-attachments/') &&
-            img.complete &&
-            img.naturalWidth > 0,
-        ),
-      undefined,
-      { timeout: 20000 },
-    );
-    const [row] = await sql(
-      `select status, published_at, image_path, highlights from public.startup_updates where startup_id = ${q(startupId)}`,
-    );
-    assert(
-      row.status === 'published' &&
-        row.published_at &&
-        row.image_path.startsWith(`${startupId}/update-`),
-      JSON.stringify(row),
-    );
-    await shot('08-updates');
+    await dialog.getByText('Describe what moved before publishing.').waitFor();
+    await dialog.getByText('Choose at least one progress type.').waitFor();
   });
+  await check(
+    'edit the draft with evidence, traction movement, blocker and milestone, then publish',
+    async () => {
+      const dialog = page.getByRole('dialog', { name: 'Edit draft' });
+      await dialog
+        .getByLabel('What meaningfully changed since your last update?')
+        .fill('Shipped the temporary validation build to 20 users.');
+      await dialog.getByRole('button', { name: 'Product', exact: true }).click();
+      await dialog.getByRole('button', { name: 'Traction', exact: true }).click();
+      await dialog.getByRole('button', { name: 'Add evidence' }).click();
+      await dialog.getByLabel('Label').fill(`${TEMP_NAME_PREFIX} release notes`);
+      await dialog.getByLabel(/^Link\b/).fill('example.com/innowiut-temp-release');
+      const movement = dialog.locator('label', { hasText: 'Active Users' });
+      await movement.getByText('320 → 400').waitFor();
+      await movement.getByRole('checkbox').check();
+      await dialog.getByLabel('What is currently slowing you down?').fill('Content production');
+      await dialog
+        .getByLabel('What specific outcome are you aiming for next?')
+        .fill('Reach 1,000 learners');
+      await dialog.getByLabel('Target date').fill('2026-12-15');
+      await shot('10-update-composer');
+      await dialog.getByRole('button', { name: 'Publish Update' }).click();
+      await toast('Update published');
+      await page.getByRole('tab', { name: /Published/ }).click();
+      const card = page.getByRole('article').first();
+      await card.getByText('Product · Traction').waitFor();
+      await card.getByText('Traction movement').waitFor();
+      await card.getByText('320 → 400').waitFor();
+      await card.getByText(`${TEMP_NAME_PREFIX} release notes`).waitFor();
+      await card.getByText('Reach 1,000 learners').waitFor();
+      const [row] = await sql(
+        `select status, published_at, progress_types, linked_stage, blocker, next_milestone, next_milestone_date,
+        (select count(*) from public.stage_evidence e where e.update_id = u.id and e.evidence_type = 'metric')::int as metric_links,
+        (select count(*) from public.stage_evidence e where e.update_id = u.id and e.evidence_type = 'link')::int as links
+       from public.startup_updates u where startup_id = ${q(startupId)}`,
+      );
+      assert(
+        row.status === 'published' &&
+          row.published_at &&
+          row.progress_types.join() === 'Product,Traction' &&
+          row.linked_stage === 'mvp' &&
+          row.blocker === 'Content production' &&
+          row.next_milestone_date === '2026-12-15' &&
+          row.metric_links === 1 &&
+          row.links === 1,
+        JSON.stringify(row),
+      );
+      await shot('11-updates');
+    },
+  );
   await check('published update has no edit or delete actions', async () => {
     const card = page.getByRole('article').first();
     assert((await card.getByRole('button').count()) === 0, 'published card has buttons');
+  });
+  await check('the journey shows the stage-linked update', async () => {
+    await page.goto(`${BASE}/founder/journey/mvp`);
+    await page.getByText(`${TEMP_NAME_PREFIX} Weekly update`).waitFor();
   });
 
   section('Startup profile and team');
@@ -306,7 +480,7 @@ try {
     await dialog.getByLabel('Role').fill('CTO');
     await dialog.getByRole('button', { name: 'Add Team Member' }).click();
     await toast('Team member added.');
-    await shot('09-startup-profile');
+    await shot('12-startup-profile');
   });
 
   section('Mentor and meeting requests');
@@ -338,7 +512,7 @@ try {
       await toast('Meeting requested');
       await page.getByText('Temporary validation request').waitFor();
       await page.getByText('Requested', { exact: true }).waitFor();
-      await shot('10-mentor');
+      await shot('13-mentor');
     },
   );
 
@@ -358,7 +532,7 @@ try {
     await page.getByText(`${TEMP_NAME_PREFIX} Weekly update`).waitFor();
     await page.getByRole('link', { name: 'View mentor' }).waitFor();
     await page.getByText('400', { exact: true }).first().waitFor();
-    await shot('11-dashboard-full');
+    await shot('14-dashboard-full');
     await page.goto(`${BASE}/founder/startup`);
     await page.getByText(`${TEMP_NAME_PREFIX} Teammate`).waitFor();
     await page.goto(`${BASE}/founder/settings`);
@@ -374,16 +548,23 @@ try {
     await page.goto(`${BASE}/founder/dashboard`);
     await page.getByRole('button', { name: 'Update Traction' }).click();
     await page.getByRole('dialog', { name: 'Update traction' }).waitFor();
-    await shot('12-mobile-record-traction');
+    await shot('15-mobile-record-traction');
     await page.keyboard.press('Escape');
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
     assert(overflow <= 1, `horizontal overflow ${overflow}px`);
-    await shot('13-mobile-dashboard');
+    await shot('16-mobile-dashboard');
+    await page.goto(`${BASE}/founder/journey`);
+    await page.getByRole('heading', { name: 'Startup Journey' }).waitFor();
+    const journeyOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+    assert(journeyOverflow <= 1, `journey horizontal overflow ${journeyOverflow}px`);
+    await shot('18-mobile-journey');
     await page.goto(`${BASE}/founder/mentor`);
     await page.getByRole('link', { name: 'Contact Mentor' }).waitFor();
-    await shot('14-mobile-mentor');
+    await shot('17-mobile-mentor');
   });
 
   await check('no uncaught errors in the browser', async () => {

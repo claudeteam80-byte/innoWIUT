@@ -29,6 +29,10 @@ const DashboardPage = page(
   () => import('@/features/dashboard/pages/DashboardPage'),
   (m) => m.DashboardPage,
 );
+const JourneyPage = page(
+  () => import('@/features/journey/pages/JourneyPage'),
+  (m) => m.JourneyPage,
+);
 const UpdatesPage = page(
   () => import('@/features/updates/pages/UpdatesPage'),
   (m) => m.UpdatesPage,
@@ -111,6 +115,8 @@ const appRoutes: RouteObject[] = [
                 element: <Navigate to={paths.founder.dashboard} replace />,
               },
               { path: paths.founder.dashboard, element: <DashboardPage /> },
+              { path: paths.founder.journey, element: <JourneyPage /> },
+              { path: `${paths.founder.journey}/:stage`, element: <JourneyPage /> },
               { path: paths.founder.updates, element: <UpdatesPage /> },
               { path: paths.founder.traction, element: <TractionPage /> },
               { path: paths.founder.mentor, element: <MentorPage /> },

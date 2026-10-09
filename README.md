@@ -52,3 +52,12 @@ request handling and admin settings. The app never shows sample or fake numbers.
 Admin access management: `founder` / `admin` / `superadmin` roles enforced in Postgres. Superadmins
 grant, revoke and promote admins at `/admin/access`; every role change is audited and the last
 superadmin cannot be removed. See [docs/setup.md](docs/setup.md#admin-access-no-public-admin-signup).
+
+V2.1 Startup Journey: six stages (Idea → Validation → MVP → Traction, then Investor Readiness and
+Investor Access, which are visible but locked). Founders work deterministic stage requirements at
+`/founder/journey`, attach structured evidence (links, screenshots, PDFs, customer feedback, notes,
+references to their own traction metrics) and post structured updates (what moved, progress type,
+evidence, traction movement read from history, blocker, next milestone, linked stage). The
+dashboard shows the current stage and a deterministic next best action. Admins get a Stage
+Distribution on the dashboard and a read-only Journey tab per startup. Completing a stage's
+requirements never moves the startup: stage transitions are a later, controlled phase.

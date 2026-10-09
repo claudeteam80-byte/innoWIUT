@@ -11,7 +11,9 @@ import { Tabs } from '@/components/ui/Tabs';
 import { externalUrl } from '@/domain/contact';
 import { formatRelativeDay } from '@/domain/dates';
 import { publicFileUrl } from '@/lib/storage';
+import { stageName } from '@/domain/journey';
 import { ActivityBadge } from '../components/ActivityBadge';
+import { JourneyTab } from '../components/JourneyTab';
 import {
   MentorTab,
   OverviewTab,
@@ -23,6 +25,7 @@ import { useAdminStartup, useStartupActivity } from '../hooks';
 
 const TABS = [
   { value: 'overview', label: 'Overview' },
+  { value: 'journey', label: 'Journey' },
   { value: 'traction', label: 'Traction' },
   { value: 'updates', label: 'Updates' },
   { value: 'team', label: 'Team' },
@@ -101,7 +104,7 @@ export function AdminStartupDetailPage() {
               </span>
             </span>
             {data.industry && <Badge tone="blue">{data.industry}</Badge>}
-            {data.stage && <Badge tone="blue">{data.stage}</Badge>}
+            <Badge tone="blue">{stageName(data.journey_stage)}</Badge>
             <span>
               Last activity {lastActive ? formatRelativeDay(lastActive).toLowerCase() : '—'}
             </span>
@@ -131,6 +134,7 @@ export function AdminStartupDetailPage() {
       </div>
 
       {tab === 'overview' && <OverviewTab startup={data} lastActive={lastActive} />}
+      {tab === 'journey' && <JourneyTab startupId={data.id} current={data.journey_stage} />}
       {tab === 'traction' && <TractionTab startupId={data.id} />}
       {tab === 'updates' && <UpdatesTab startupId={data.id} />}
       {tab === 'team' && <TeamTab startup={data} />}

@@ -7,7 +7,6 @@ const profile = {
   tagline: 'Adaptive learning',
   description: '',
   industry: 'EdTech',
-  stage: 'MVP',
   website: 'gamma.uz',
   founded_year: '2024',
   team_size: '5',

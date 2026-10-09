@@ -25,6 +25,8 @@ import { TractionChart } from '@/features/traction/components/TractionChart';
 import { TractionHistory } from '@/features/traction/components/TractionHistory';
 import { useEntries, useMetrics } from '@/features/traction/hooks';
 import { UpdateCard } from '@/features/updates/components/UpdateCard';
+import { useUpdateContext } from '@/features/updates/hooks';
+import { stageName } from '@/domain/journey';
 import { errorMessage } from '@/lib/errors';
 import { publicFileUrl } from '@/lib/storage';
 import { addMentorNote, assignMentor, endAssignment, type AdminStartup } from '../api';
@@ -61,7 +63,7 @@ export function OverviewTab({
           items={[
             { label: 'Description', value: startup.description, wide: true },
             { label: 'Industry', value: startup.industry },
-            { label: 'Stage', value: startup.stage },
+            { label: 'Journey stage', value: stageName(startup.journey_stage) },
             { label: 'Founded', value: startup.founded_year },
             { label: 'Team size', value: startup.team_size },
             {
@@ -196,6 +198,7 @@ export function TractionTab({ startupId }: { startupId: string }) {
 
 export function UpdatesTab({ startupId }: { startupId: string }) {
   const updates = usePublishedUpdates(startupId);
+  const context = useUpdateContext(startupId);
   if (updates.isError) return <ErrorState onRetry={() => void updates.refetch()} />;
   if (updates.isPending) return <Skeleton className="h-40 w-full rounded-xl" />;
   const published = updates.data.filter((u) => u.status === 'published');
@@ -211,7 +214,7 @@ export function UpdatesTab({ startupId }: { startupId: string }) {
   return (
     <div className="space-y-4">
       {published.map((update) => (
-        <UpdateCard key={update.id} update={update} />
+        <UpdateCard key={update.id} update={update} context={context} />
       ))}
     </div>
   );

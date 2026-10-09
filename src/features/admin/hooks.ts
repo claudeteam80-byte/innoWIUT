@@ -9,6 +9,7 @@ import {
   fetchRecentUpdates,
   fetchStartup,
   fetchStartupActivity,
+  fetchStageDistribution,
   fetchStartupList,
   type MeetingStatus,
   type StartupListParams,
@@ -17,6 +18,9 @@ import { adminKeys } from './keys';
 
 export const useDashboardStats = () =>
   useQuery({ queryKey: adminKeys.stats, queryFn: fetchDashboardStats });
+
+export const useStageDistribution = () =>
+  useQuery({ queryKey: adminKeys.stageDistribution, queryFn: fetchStageDistribution });
 
 export const useRecentUpdates = () =>
   useQuery({ queryKey: adminKeys.recentUpdates, queryFn: () => fetchRecentUpdates() });

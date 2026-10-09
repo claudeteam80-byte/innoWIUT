@@ -79,9 +79,14 @@ describe('step 2 — startup information', () => {
     ).toMatch(/whole number/);
   });
 
-  it('only accepts the five stages', () => {
+  it('only accepts the four open journey stages', () => {
     expect(issues(startupStepSchema.safeParse({ ...complete, stage: 'Series A' })).stage).toBe(
       'Choose a stage.',
+    );
+    // Growth maps to traction in the database; new founders choose "Traction" instead.
+    expect(startupStepSchema.safeParse({ ...complete, stage: 'Growth' }).success).toBe(false);
+    expect(startupStepSchema.safeParse({ ...complete, stage: 'Early Traction' }).success).toBe(
+      true,
     );
   });
 });

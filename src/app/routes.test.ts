@@ -44,6 +44,16 @@ describe('route table', () => {
     );
   });
 
+  it('registers the V2.1 journey routes inside the founder area', () => {
+    expect(allPaths).toEqual(
+      expect.arrayContaining(['/founder/journey', '/founder/journey/:stage']),
+    );
+  });
+
+  it('does not ship V2.1 out-of-scope areas', () => {
+    expect(allPaths.filter((path) => /investor|fundrais|vc/i.test(path))).toEqual([]);
+  });
+
   it('has no public admin sign up', () => {
     expect(allPaths.filter((path) => /^\/admin\/(signup|sign-up|register)/.test(path))).toEqual([]);
   });

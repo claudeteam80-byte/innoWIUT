@@ -9,7 +9,10 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { SelectField, TextareaField } from '@/components/ui/Field';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
-import { INDUSTRIES, STAGES } from '@/domain/options';
+import { INDUSTRIES } from '@/domain/options';
+import { stageName } from '@/domain/journey';
+import { Link } from 'react-router';
+import { paths } from '@/app/paths';
 import { useAuth } from '@/features/auth/useAuth';
 import { founderKeys } from '@/features/founder-keys';
 import { errorMessage } from '@/lib/errors';
@@ -63,7 +66,6 @@ function toFormValues(startup: Startup): StartupProfileInput {
     tagline: startup.tagline ?? '',
     description: startup.description ?? '',
     industry: (startup.industry ?? '') as StartupProfileInput['industry'],
-    stage: (startup.stage ?? '') as StartupProfileInput['stage'],
     website: startup.website ?? '',
     founded_year: startup.founded_year ? String(startup.founded_year) : '',
     team_size: startup.team_size ? String(startup.team_size) : '',
@@ -132,14 +134,18 @@ function StartupForm({ startup }: { startup: Startup }) {
         error={errors.industry?.message}
         {...register('industry')}
       />
-      <SelectField
-        label="Stage"
-        required
-        placeholder="Select stage"
-        options={STAGES}
-        error={errors.stage?.message}
-        {...register('stage')}
-      />
+      <div className="space-y-1.5">
+        <p className="text-[13px] font-medium text-ink">Journey stage</p>
+        <p className="flex h-10 items-center rounded-lg border border-line bg-canvas-subtle px-3 text-[13px] text-ink">
+          {stageName(startup.journey_stage)}
+        </p>
+        <p className="text-[12px] text-muted">
+          Stage moves are reviewed by innoWIUT.{' '}
+          <Link to={paths.founder.journey} className="font-medium text-primary hover:underline">
+            View your journey
+          </Link>
+        </p>
+      </div>
       <TextField
         label="Founded year"
         required

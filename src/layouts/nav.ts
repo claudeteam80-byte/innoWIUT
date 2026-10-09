@@ -4,6 +4,7 @@ import {
   KeyRound,
   FileText,
   LayoutDashboard,
+  Route,
   Settings,
   TrendingUp,
   UserRound,
@@ -15,6 +16,7 @@ import type { NavItem } from './AppShell';
 // Mentor Directory, Help and standalone Team Management are intentionally hidden in V1.
 export const founderNavItems: NavItem[] = [
   { label: 'Overview', to: paths.founder.dashboard, icon: LayoutDashboard },
+  { label: 'Journey', to: paths.founder.journey, icon: Route },
   { label: 'Updates', to: paths.founder.updates, icon: FileText },
   { label: 'Traction', to: paths.founder.traction, icon: TrendingUp },
   { label: 'Mentor', to: paths.founder.mentor, icon: UserRound },

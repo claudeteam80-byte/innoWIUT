@@ -1,33 +1,42 @@
 import { z } from 'zod';
-import { optionalText, optionalUrl } from '@/domain/form-fields';
+import { optionalText } from '@/domain/form-fields';
+import { OPEN_STAGE_KEYS, PROGRESS_TYPES } from '@/domain/journey';
 
 export type UpdateAction = 'draft' | 'publish';
 
+// Structured update (V2.1). V1 columns (highlights, challenge, next_steps, image, link) are
+// not edited by the composer — they stay exactly as written and still render.
 const baseFields = {
   title: z
     .string()
     .trim()
-    .min(1, 'Give your update a title.')
+    .min(1, 'Give your update a headline.')
     .max(200, 'Use 200 characters or fewer.'),
-  highlights: z
-    .array(z.object({ text: z.string().trim().max(300, 'Use 300 characters or fewer.') }))
-    .max(20),
-  challenge: optionalText(2000),
-  next_steps: optionalText(2000),
-  link_url: optionalUrl('Enter a valid link.'),
+  progress_types: z.array(z.enum(PROGRESS_TYPES)).max(PROGRESS_TYPES.length),
+  blocker: optionalText(2000),
+  next_milestone: optionalText(300),
+  next_milestone_date: z
+    .string()
+    .trim()
+    .refine((value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value), 'Choose a valid date.')
+    .transform((value) => value || null),
+  linked_stage: z
+    .union([z.enum(OPEN_STAGE_KEYS), z.literal('')])
+    .transform((value) => value || null),
 };
 
-/** Drafts only need a title. */
+/** Drafts only need a headline. */
 export const draftUpdateSchema = z.object({ ...baseFields, summary: optionalText(4000) });
 
-/** Publishing also needs "What happened?". */
+/** Publishing also needs "What moved?" and at least one progress type. */
 export const publishUpdateSchema = z.object({
   ...baseFields,
   summary: z
     .string()
     .trim()
-    .min(1, 'Describe what happened before publishing.')
+    .min(1, 'Describe what moved before publishing.')
     .max(4000, 'Use 4000 characters or fewer.'),
+  progress_types: baseFields.progress_types.min(1, 'Choose at least one progress type.'),
 });
 
 export const updateSchemaFor = (action: UpdateAction) =>
@@ -41,10 +50,19 @@ export function buildUpdateRow(values: UpdateFormValues, action: UpdateAction) {
   return {
     title: parsed.title,
     summary: parsed.summary || null,
-    highlights: parsed.highlights.map((item) => item.text).filter(Boolean),
-    challenge: parsed.challenge,
-    next_steps: parsed.next_steps,
-    link_url: parsed.link_url,
+    progress_types: parsed.progress_types,
+    blocker: parsed.blocker,
+    next_milestone: parsed.next_milestone,
+    next_milestone_date: parsed.next_milestone_date,
+    linked_stage: parsed.linked_stage,
     status: action === 'publish' ? ('published' as const) : ('draft' as const),
   };
+}
+
+/** A V1 draft can be published from its card only once it has what a V2.1 update needs. */
+export function canQuickPublish(update: {
+  summary: string | null;
+  progress_types: readonly string[];
+}): boolean {
+  return Boolean(update.summary?.trim()) && update.progress_types.length > 0;
 }

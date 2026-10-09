@@ -697,6 +697,268 @@ await check(
     assert(res.status === 200, `public fetch ${res.status}`);
   },
 );
+section('Startup Journey (V2.1)');
+const PDF = new TextEncoder().encode('%PDF-1.4\n%innowiut-temp evidence\n%%EOF\n');
+let evidencePdfPath;
+await check('journey stage is derived on the server and requirements are initialised', async () => {
+  const { data, error } = await a
+    .from('startups')
+    .select('stage, journey_stage')
+    .eq('id', startupA.id)
+    .single();
+  if (error) throw error;
+  assert(data.stage === 'MVP' && data.journey_stage === 'mvp', JSON.stringify(data));
+  const reqs = await a.from('startup_stage_requirements').select('stage');
+  if (reqs.error) throw reqs.error;
+  const byStage = Object.groupBy(reqs.data, (r) => r.stage);
+  assert(
+    byStage.idea?.length === 5 && byStage.validation?.length === 6 && byStage.mvp?.length === 6,
+    JSON.stringify(Object.fromEntries(Object.entries(byStage).map(([k, v]) => [k, v.length]))),
+  );
+});
+await check('anon cannot read journey tables or the stage distribution', async () => {
+  assertDenied(await anon.from('startup_stage_requirements').select('*').limit(1), 'anon reqs');
+  assertDenied(await anon.from('stage_evidence').select('*').limit(1), 'anon evidence');
+  assertDenied(await anon.rpc('admin_stage_distribution'), 'anon distribution');
+});
+await check('founder cannot write journey_stage or move their stage', async () => {
+  assertDenied(
+    await a.from('startups').update({ journey_stage: 'traction' }).eq('id', startupA.id),
+    'journey_stage write',
+  );
+});
+await check('completing every MVP requirement does not advance the stage', async () => {
+  const res = await a
+    .from('startup_stage_requirements')
+    .update({ status: 'completed' })
+    .eq('startup_id', startupA.id)
+    .eq('stage', 'mvp')
+    .select('completed_at');
+  if (res.error) throw res.error;
+  assert(res.data.length === 6 && res.data.every((r) => r.completed_at), 'not all completed');
+  const { data } = await a.from('startups').select('journey_stage').eq('id', startupA.id).single();
+  assert(data.journey_stage === 'mvp', `stage moved to ${data.journey_stage}`);
+});
+await check('locked stages cannot hold requirements or evidence', async () => {
+  assertDenied(
+    await a.from('startup_stage_requirements').insert({
+      startup_id: startupA.id,
+      stage: 'investor_readiness',
+      requirement_key: 'pitch_deck',
+      title: 'Pitch Deck',
+    }),
+    'locked requirement',
+  );
+  assertDenied(
+    await a.from('stage_evidence').insert({
+      startup_id: startupA.id,
+      stage: 'investor_access',
+      evidence_type: 'link',
+      label: 'x',
+      url: 'https://example.com',
+    }),
+    'locked evidence',
+  );
+});
+await check('traction requirement links an existing metric without copying values', async () => {
+  const before = await sql(
+    `select count(*)::int n from public.traction_entries where startup_id = '${startupA.id}'`,
+  );
+  const res = await a.from('startup_stage_requirements').insert({
+    startup_id: startupA.id,
+    stage: 'traction',
+    requirement_key: 'active_users',
+    title: 'Active Users',
+    linked_metric_id: usersMetric.id,
+  });
+  if (res.error) throw res.error;
+  const after = await sql(
+    `select count(*)::int n from public.traction_entries where startup_id = '${startupA.id}'`,
+  );
+  assert(before[0].n === after[0].n, 'traction entries changed');
+  assertDenied(
+    await b.from('startup_stage_requirements').insert({
+      startup_id: startupB.id,
+      stage: 'traction',
+      requirement_key: 'active_users',
+      title: 'Active Users',
+      linked_metric_id: usersMetric.id,
+    }),
+    'B links A metric',
+  );
+});
+await check('founder adds evidence (link, PDF document, metric) to own startup only', async () => {
+  evidencePdfPath = `${startupA.id}/evidence-${crypto.randomUUID()}.pdf`;
+  const up = await a.storage
+    .from('update-attachments')
+    .upload(evidencePdfPath, new Blob([PDF], { type: 'application/pdf' }), {
+      contentType: 'application/pdf',
+    });
+  if (up.error) throw up.error;
+  const res = await a.from('stage_evidence').insert(
+    [
+      {
+        startup_id: startupA.id,
+        stage: 'mvp',
+        evidence_type: 'product_url',
+        label: `${TEMP_NAME_PREFIX} product`,
+        url: 'https://example.com/app',
+      },
+      {
+        startup_id: startupA.id,
+        stage: 'mvp',
+        evidence_type: 'document',
+        label: `${TEMP_NAME_PREFIX} test notes`,
+        file_path: evidencePdfPath,
+      },
+      {
+        startup_id: startupA.id,
+        stage: 'traction',
+        evidence_type: 'metric',
+        label: 'Users',
+        linked_metric_id: usersMetric.id,
+      },
+    ],
+    { defaultToNull: false },
+  );
+  if (res.error) throw res.error;
+  assertDenied(
+    await b.from('stage_evidence').insert({
+      startup_id: startupA.id,
+      stage: 'mvp',
+      evidence_type: 'link',
+      label: 'x',
+      url: 'https://example.com',
+    }),
+    'B evidence on A',
+  );
+  assertDenied(
+    await a.from('stage_evidence').insert({
+      startup_id: startupA.id,
+      stage: 'mvp',
+      evidence_type: 'screenshot',
+      label: 'x',
+      file_path: `${startupB.id}/x.png`,
+    }),
+    'file outside own folder',
+  );
+});
+await check('Founder B sees none of Founder A journey data and cannot change it', async () => {
+  const reqs = await b.from('startup_stage_requirements').select('startup_id');
+  assert(
+    reqs.data.every((r) => r.startup_id === startupB.id),
+    'B sees A requirements',
+  );
+  const ev = await b.from('stage_evidence').select('id');
+  assert(ev.data.length === 0, 'B sees evidence');
+  const upd = await b
+    .from('startup_stage_requirements')
+    .update({ status: 'not_started' })
+    .eq('startup_id', startupA.id)
+    .select();
+  assert(upd.data.length === 0, 'B updated A requirements');
+  const del = await b.from('stage_evidence').delete().eq('startup_id', startupA.id).select();
+  assert(del.data.length === 0, 'B deleted A evidence');
+  const file = await b.storage.from('update-attachments').download(evidencePdfPath);
+  assert(file.error, 'B downloaded A evidence file');
+});
+await check('structured update: draft evidence is hidden from admins until published', async () => {
+  const draft = await a
+    .from('startup_updates')
+    .insert({
+      startup_id: startupA.id,
+      title: `${TEMP_NAME_PREFIX} Structured`,
+      summary: 'Tested with 20 users',
+      status: 'draft',
+      progress_types: ['Product', 'Traction'],
+      blocker: 'Hiring',
+      next_milestone: 'Reach 1,000 users',
+      next_milestone_date: '2026-12-01',
+      linked_stage: 'mvp',
+    })
+    .select()
+    .single();
+  if (draft.error) throw draft.error;
+  const ev = await a.from('stage_evidence').insert({
+    startup_id: startupA.id,
+    update_id: draft.data.id,
+    stage: 'mvp',
+    evidence_type: 'metric',
+    label: 'Users',
+    linked_metric_id: usersMetric.id,
+  });
+  if (ev.error) throw ev.error;
+  const hidden = await admin.from('stage_evidence').select('id').eq('update_id', draft.data.id);
+  assert(hidden.data.length === 0, 'admin sees draft evidence');
+  assertDenied(
+    await a
+      .from('startup_updates')
+      .update({ progress_types: ['Hype'] })
+      .eq('id', draft.data.id),
+    'unknown progress type',
+  );
+  const pub = await a
+    .from('startup_updates')
+    .update({ status: 'published' })
+    .eq('id', draft.data.id);
+  if (pub.error) throw pub.error;
+  const shown = await admin
+    .from('startup_updates')
+    .select('progress_types, linked_stage, blocker, next_milestone')
+    .eq('id', draft.data.id)
+    .single();
+  assert(shown.data?.linked_stage === 'mvp' && shown.data.progress_types.length === 2, 'fields');
+  const visible = await admin.from('stage_evidence').select('id').eq('update_id', draft.data.id);
+  assert(visible.data.length === 1, 'admin cannot see published evidence');
+});
+await check('admin reads all journey data but cannot write it', async () => {
+  const reqs = await admin
+    .from('startup_stage_requirements')
+    .select('id')
+    .in('startup_id', [startupA.id, startupB.id]);
+  assert(reqs.data.length === 17 + 17 + 1, `admin sees ${reqs.data.length} requirements`);
+  const ev = await admin.from('stage_evidence').select('id').eq('startup_id', startupA.id);
+  assert(ev.data.length === 4, `admin sees ${ev.data.length} evidence`);
+  const upd = await admin
+    .from('startup_stage_requirements')
+    .update({ status: 'not_started' })
+    .eq('startup_id', startupA.id)
+    .select();
+  assert(upd.data.length === 0, 'admin changed requirements');
+  assertDenied(
+    await admin.from('stage_evidence').insert({
+      startup_id: startupA.id,
+      stage: 'mvp',
+      evidence_type: 'link',
+      label: 'x',
+      url: 'https://example.com',
+    }),
+    'admin evidence insert',
+  );
+  const del = await admin.from('stage_evidence').delete().eq('startup_id', startupA.id).select();
+  assert(del.data.length === 0, 'admin deleted evidence');
+  const signed = await admin.storage
+    .from('update-attachments')
+    .createSignedUrl(evidencePdfPath, 60);
+  if (signed.error) throw signed.error;
+  const res = await fetch(signed.data.signedUrl);
+  assert(res.status === 200, `admin evidence file ${res.status}`);
+});
+await check('stage distribution: admins only, counted in Postgres', async () => {
+  assertDenied(await a.rpc('admin_stage_distribution'), 'founder distribution');
+  const { data, error } = await admin.rpc('admin_stage_distribution');
+  if (error) throw error;
+  const [expected] = await sql(
+    `select count(*)::int n from public.startups where onboarding_completed_at is not null`,
+  );
+  const total = data.reduce((sum, row) => sum + Number(row.startups), 0);
+  assert(data.length === 6 && total === expected.n, `${total} vs ${expected.n}`);
+});
+await check('evidence files are removed by their owner', async () => {
+  const r = await a.storage.from('update-attachments').remove([evidencePdfPath]);
+  assert(r.data?.length === 1, 'evidence file not removed');
+});
+
 await check('test files are deleted through the Storage API by their owners', async () => {
   const r1 = await a.storage.from('startup-logos').remove([logoPath]);
   const r2 = await a.storage.from('update-attachments').remove([attachmentPath]);

@@ -16,6 +16,7 @@ const EXTENSIONS: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
+  'application/pdf': 'pdf',
 };
 
 /** Returns an error message, or null when the file can be uploaded to `bucket`. */
@@ -28,6 +29,23 @@ export function validateImage(
   }
   const max = MAX_IMAGE_BYTES[bucket];
   if (file.size > max) return `Images must be ${Math.round(max / 1024 / 1024)} MB or smaller.`;
+  if (file.size === 0) return 'That file is empty.';
+  return null;
+}
+
+/** Journey evidence files share the private update-attachments bucket (5 MB, signed URLs). */
+export const EVIDENCE_DOCUMENT_TYPES = [...ALLOWED_IMAGE_TYPES, 'application/pdf'] as const;
+
+/** Returns an error message, or null when the file can be stored as evidence. */
+export function validateEvidenceFile(
+  file: Pick<File, 'type' | 'size'>,
+  kind: 'screenshot' | 'document',
+): string | null {
+  if (kind === 'screenshot') return validateImage(file, 'update-attachments');
+  if (!(EVIDENCE_DOCUMENT_TYPES as readonly string[]).includes(file.type)) {
+    return 'Use a PDF, PNG, JPG or WebP file.';
+  }
+  if (file.size > MAX_IMAGE_BYTES['update-attachments']) return 'Files must be 5 MB or smaller.';
   if (file.size === 0) return 'That file is empty.';
   return null;
 }
@@ -81,7 +99,7 @@ export async function uploadWithProgress(
 }
 
 function uploadErrorMessage(status: number): string {
-  if (status === 413) return 'That image is too large.';
+  if (status === 413) return 'That file is too large.';
   if (status === 415) return 'That file type is not allowed.';
   if (status === 401 || status === 403) return "You don't have permission to upload here.";
   return 'Upload failed. Please try again.';

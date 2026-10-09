@@ -42,6 +42,15 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   return row;
 }
 
+export type StageDistributionRow = Functions['admin_stage_distribution']['Returns'][number];
+
+/** Onboarded startups per journey stage, counted in Postgres (every stage, zero-filled). */
+export async function fetchStageDistribution(): Promise<StageDistributionRow[]> {
+  const { data, error } = await supabase.rpc('admin_stage_distribution');
+  if (error) throw error;
+  return data;
+}
+
 export async function fetchStartupList(
   params: StartupListParams,
 ): Promise<{ rows: StartupListRow[]; total: number }> {

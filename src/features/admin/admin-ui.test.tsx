@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { signedInAs, TestProviders } from '@/test/auth-test-utils';
 import { MentorDialog } from './components/MentorDialog';
+import { JourneyTab } from './components/JourneyTab';
 import { MentorTab, UpdatesTab } from './components/StartupTabs';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminMeetingRequestsPage } from './pages/AdminMeetingRequestsPage';
@@ -19,6 +20,7 @@ const api = vi.hoisted(() => ({
   MEETINGS_PAGE_SIZE: 25,
   startupListArgs: vi.fn(),
   fetchDashboardStats: vi.fn(),
+  fetchStageDistribution: vi.fn(),
   fetchRecentUpdates: vi.fn(),
   fetchStartupList: vi.fn(),
   fetchStartup: vi.fn(),
@@ -37,7 +39,19 @@ const api = vi.hoisted(() => ({
   updateMeetingRequest: vi.fn(),
 }));
 vi.mock('./api', () => api);
+const journeyApi = vi.hoisted(() => ({
+  fetchRequirements: vi.fn(),
+  fetchEvidence: vi.fn(),
+  updateRequirement: vi.fn(),
+  saveTractionChoices: vi.fn(),
+  addEvidence: vi.fn(),
+  deleteEvidence: vi.fn(),
+}));
+vi.mock('@/features/journey/api', () => journeyApi);
+const tractionApi = vi.hoisted(() => ({ fetchMetrics: vi.fn(), fetchEntries: vi.fn() }));
+vi.mock('@/features/traction/api', () => tractionApi);
 vi.mock('@/features/updates/hooks', () => ({
+  useUpdateContext: () => undefined,
   useSignedImageUrl: () => ({
     data: undefined,
     isPending: false,
@@ -100,6 +114,7 @@ const listRow = {
   logo_path: null,
   industry: 'EdTech',
   stage: 'MVP',
+  journey_stage: 'mvp',
   created_at: '2026-10-01T00:00:00Z',
   founder_name: 'Dilnoza Yusupova',
   founder_email: 'd@example.com',
@@ -120,6 +135,17 @@ const listRow = {
 beforeEach(() => {
   vi.clearAllMocks();
   api.fetchRecentUpdates.mockResolvedValue([]);
+  api.fetchStageDistribution.mockResolvedValue([
+    { stage: 'idea', startups: 3 },
+    { stage: 'validation', startups: 1 },
+    { stage: 'mvp', startups: 4 },
+    { stage: 'traction', startups: 2 },
+    { stage: 'investor_readiness', startups: 0 },
+    { stage: 'investor_access', startups: 0 },
+  ]);
+  tractionApi.fetchMetrics.mockResolvedValue([]);
+  tractionApi.fetchEntries.mockResolvedValue([]);
+  journeyApi.fetchEvidence.mockResolvedValue([]);
   api.fetchMentors.mockResolvedValue([mentor(), mentor({ id: 'mentor-2', name: 'Bobur Aliev' })]);
 });
 
@@ -192,6 +218,140 @@ describe('AdminDashboardPage', () => {
   });
 });
 
+describe('Stage Distribution', () => {
+  it('shows onboarded startups per open stage from the database', async () => {
+    api.fetchDashboardStats.mockResolvedValue({
+      total_startups: 10,
+      active_startups: 0,
+      needs_update_startups: 0,
+      inactive_startups: 0,
+      updates_this_week: 0,
+      growing_startups: 0,
+      unassigned_startups: 0,
+      open_meeting_requests: 0,
+    });
+    renderAt(<AdminDashboardPage />);
+    const list = await screen.findByRole('list', { name: 'Startups per stage' });
+    expect(within(list).getByRole('link', { name: 'Idea: 3 startups' })).toHaveAttribute(
+      'href',
+      '/admin/startups?stage=idea',
+    );
+    expect(within(list).getByRole('link', { name: 'Validation: 1 startup' })).toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: 'MVP: 4 startups' })).toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: 'Traction: 2 startups' })).toBeInTheDocument();
+    expect(within(list).getAllByRole('link')).toHaveLength(4);
+    expect(within(list).getByRole('link', { name: 'MVP: 4 startups' })).toHaveTextContent(
+      '4 · 40%',
+    );
+    expect(api.fetchStageDistribution).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('JourneyTab (admin, read-only)', () => {
+  const requirement = (key: string, title: string, overrides: Record<string, unknown> = {}) => ({
+    id: `r-${key}`,
+    startup_id: 's',
+    stage: 'validation',
+    requirement_key: key,
+    title,
+    description: null,
+    required: true,
+    status: 'not_started',
+    progress_value: null,
+    progress_target: null,
+    linked_metric_id: null,
+    completed_at: null,
+    created_at: '2026-10-01T00:00:00Z',
+    updated_at: '2026-10-01T00:00:00Z',
+    ...overrides,
+  });
+
+  it('shows stage, progress, requirement status, evidence and stage-linked updates', async () => {
+    journeyApi.fetchRequirements.mockResolvedValue([
+      requirement('customer_interviews', 'Customer Interviews', {
+        status: 'in_progress',
+        progress_value: 6,
+        progress_target: 10,
+      }),
+      requirement('problem_validation', 'Problem Validation', { status: 'completed' }),
+      requirement('customer_persona', 'Customer Persona'),
+      requirement('competitor_research', 'Competitor Research'),
+      requirement('pricing_willingness', 'Pricing / Willingness to Pay'),
+      requirement('key_assumptions', 'Key Assumptions'),
+    ]);
+    journeyApi.fetchEvidence.mockResolvedValue([
+      {
+        id: 'e1',
+        startup_id: 's',
+        requirement_id: 'r-customer_interviews',
+        update_id: null,
+        stage: 'validation',
+        evidence_type: 'customer_feedback',
+        label: 'Teacher interview',
+        text_value: 'Grading takes all weekend.',
+        url: null,
+        file_path: null,
+        linked_metric_id: null,
+        created_by: null,
+        created_at: '2026-10-02T00:00:00Z',
+      },
+    ]);
+    api.fetchPublishedUpdates.mockResolvedValue([
+      {
+        id: 'u1',
+        startup_id: 's',
+        author_id: null,
+        title: 'Interview sprint',
+        summary: 'Six interviews',
+        highlights: [],
+        challenge: null,
+        next_steps: null,
+        image_path: null,
+        link_url: null,
+        progress_types: ['Customer Validation'],
+        blocker: 'Finding schools',
+        next_milestone: 'Reach 10 interviews',
+        next_milestone_date: '2026-11-01',
+        linked_stage: 'validation',
+        status: 'published',
+        update_date: '2026-10-05',
+        published_at: '2026-10-05T00:00:00Z',
+        created_at: '',
+        updated_at: '',
+      },
+    ]);
+    renderAt(<JourneyTab startupId="s" current="validation" />);
+
+    const current = await screen.findByRole('region', { name: /^02/ });
+    expect(within(current).getByText('1 of 6 requirements completed')).toBeInTheDocument();
+    expect(within(current).getByText('Complete 4 more customer interviews')).toBeInTheDocument();
+    expect(screen.getByText('Teacher interview')).toBeInTheDocument();
+    expect(screen.getByText('Grading takes all weekend.')).toBeInTheDocument();
+    expect(screen.getByText('Interview sprint')).toBeInTheDocument();
+    expect(screen.getByText('Finding schools')).toBeInTheDocument();
+    expect(screen.getAllByText('In Progress').length).toBeGreaterThan(0);
+    // Read-only: no founder actions.
+    expect(
+      screen.queryByRole('button', { name: /Update|Add Evidence|Remove|Select Metrics/ }),
+    ).not.toBeInTheDocument();
+    // Locked stages are shown but not selectable.
+    expect(screen.queryByRole('button', { name: /Investor Readiness/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Investor Access — Locked')).toBeInTheDocument();
+  });
+
+  it('says when a founder has not started', async () => {
+    journeyApi.fetchRequirements.mockResolvedValue([
+      requirement('problem_statement', 'Problem Statement', { stage: 'idea' }),
+    ]);
+    api.fetchPublishedUpdates.mockResolvedValue([]);
+    renderAt(<JourneyTab startupId="s" current="idea" />);
+    expect(
+      await screen.findByText('This founder has not started their journey requirements yet.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('No evidence uploaded yet.')).toBeInTheDocument();
+  });
+});
+
 describe('AdminStartupsPage', () => {
   it('renders the database rows with activity labels', async () => {
     api.fetchStartupList.mockResolvedValue({ rows: [listRow], total: 1 });
@@ -238,7 +398,7 @@ describe('AdminStartupsPage', () => {
 
   it('shows a filtered empty state', async () => {
     api.fetchStartupList.mockResolvedValue({ rows: [], total: 0 });
-    renderAt(<AdminStartupsPage />, '/?stage=Growth');
+    renderAt(<AdminStartupsPage />, '/?stage=traction');
     expect(await screen.findByText('No startups match these filters')).toBeInTheDocument();
   });
 });
@@ -257,6 +417,11 @@ describe('UpdatesTab', () => {
         next_steps: null,
         image_path: null,
         link_url: null,
+        progress_types: [],
+        blocker: null,
+        next_milestone: null,
+        next_milestone_date: null,
+        linked_stage: null,
         status: 'published',
         update_date: '2026-10-05',
         published_at: '2026-10-05T00:00:00Z',
@@ -274,6 +439,11 @@ describe('UpdatesTab', () => {
         next_steps: null,
         image_path: null,
         link_url: null,
+        progress_types: [],
+        blocker: null,
+        next_milestone: null,
+        next_milestone_date: null,
+        linked_stage: null,
         status: 'draft',
         update_date: '2026-10-06',
         published_at: null,

@@ -11,6 +11,8 @@ export const paths = {
     root: '/founder',
     onboarding: '/founder/onboarding',
     dashboard: '/founder/dashboard',
+    journey: '/founder/journey',
+    journeyStage: (stage: string) => `/founder/journey/${encodeURIComponent(stage)}`,
     updates: '/founder/updates',
     traction: '/founder/traction',
     mentor: '/founder/mentor',

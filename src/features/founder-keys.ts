@@ -8,4 +8,6 @@ export const founderKeys = {
   notes: (startupId: string) => ['mentor-notes', startupId] as const,
   meetings: (startupId: string) => ['meeting-requests', startupId] as const,
   signedUrl: (path: string) => ['signed-url', path] as const,
+  requirements: (startupId: string) => ['stage-requirements', startupId] as const,
+  evidence: (startupId: string) => ['stage-evidence', startupId] as const,
 };

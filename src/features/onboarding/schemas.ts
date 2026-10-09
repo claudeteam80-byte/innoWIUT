@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { amount, optionalUrl, phoneNumber, requiredText } from '@/domain/form-fields';
-import { CURRENCIES, FOUNDER_ROLES } from '@/domain/options';
+import { CURRENCIES, FOUNDER_ROLES, STAGES } from '@/domain/options';
 import { startupInfoFields } from '@/features/startup/schemas';
 
 const yesNo = z.enum(['yes', 'no'], { error: 'Choose yes or no.' });
@@ -12,7 +12,10 @@ export const aboutYouSchema = z.object({
   role_in_startup: z.enum(FOUNDER_ROLES, { error: 'Choose your role.' }),
 });
 
-export const startupStepSchema = z.object(startupInfoFields);
+export const startupStepSchema = z.object({
+  ...startupInfoFields,
+  stage: z.enum(STAGES, { error: 'Choose a stage.' }),
+});
 
 export const progressSchema = z
   .object({

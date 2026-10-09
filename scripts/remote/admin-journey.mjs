@@ -6,7 +6,7 @@
 // Seeds a temporary onboarded founder (traction, one published update, one draft)
 // and a temporary admin, then: admin logs in, checks dashboard stats against the
 // database, finds the startup, sees real traction and the published update (not the
-// draft), creates a mentor with a photo, assigns them, adds a note; the founder sees
+// draft), the Stage Distribution and the read-only Journey tab, creates a mentor with a photo, assigns them, adds a note; the founder sees
 // mentor and note and requests a meeting; the admin confirms it; the founder sees
 // "Confirmed". Everything is removed afterwards. No email is sent.
 import { execFileSync } from 'node:child_process';
@@ -42,6 +42,8 @@ const mentorName = `${TEMP_NAME_PREFIX} Admin Journey Mentor`;
 const noteText = `${TEMP_NAME_PREFIX} interview ten customers this week`;
 const publishedTitle = `${TEMP_NAME_PREFIX} Published progress`;
 const draftTitle = `${TEMP_NAME_PREFIX} Private draft`;
+const stageEvidenceLabel = `${TEMP_NAME_PREFIX} customer quote`;
+const draftEvidenceLabel = `${TEMP_NAME_PREFIX} draft-only evidence`;
 
 const browser = await chromium.launch();
 const adminPage = await (
@@ -148,6 +150,51 @@ try {
         { defaultToNull: false },
       );
       if (updates.error) throw updates.error;
+      // V2.1 journey data: progress on two Validation requirements, stage evidence, a
+      // stage-linked published update, and evidence on the draft (must stay hidden).
+      const linked = await client
+        .from('startup_updates')
+        .update({ linked_stage: 'validation', progress_types: ['Customer Validation'] })
+        .eq('startup_id', startupId)
+        .select('id, status');
+      if (linked.error) throw linked.error;
+      const { data: reqs } = await client
+        .from('startup_stage_requirements')
+        .select('id, requirement_key')
+        .eq('stage', 'validation');
+      const reqId = (key) => reqs.find((r) => r.requirement_key === key).id;
+      const r1 = await client
+        .from('startup_stage_requirements')
+        .update({ status: 'completed' })
+        .eq('id', reqId('problem_validation'));
+      const r2 = await client
+        .from('startup_stage_requirements')
+        .update({ status: 'in_progress', progress_value: 4 })
+        .eq('id', reqId('customer_interviews'));
+      if (r1.error || r2.error) throw r1.error ?? r2.error;
+      const draftId = linked.data.find((u) => u.status === 'draft').id;
+      const evidence = await client.from('stage_evidence').insert(
+        [
+          {
+            startup_id: startupId,
+            requirement_id: reqId('customer_interviews'),
+            stage: 'validation',
+            evidence_type: 'customer_feedback',
+            label: stageEvidenceLabel,
+            text_value: 'We would pay for this today.',
+          },
+          {
+            startup_id: startupId,
+            update_id: draftId,
+            stage: 'validation',
+            evidence_type: 'text_note',
+            label: draftEvidenceLabel,
+            text_value: 'Not ready.',
+          },
+        ],
+        { defaultToNull: false },
+      );
+      if (evidence.error) throw evidence.error;
       await createConfirmedUser({
         email: admin.email,
         password: admin.password,
@@ -192,6 +239,25 @@ try {
     await shot(adminPage, '01-admin-dashboard');
   });
 
+  await check('2b. stage distribution matches admin_stage_distribution()', async () => {
+    const { data, error } = await adminClient.rpc('admin_stage_distribution');
+    if (error) throw error;
+    const list = adminPage.getByRole('list', { name: 'Startups per stage' });
+    await list.waitFor();
+    for (const [stage, name] of [
+      ['idea', 'Idea'],
+      ['validation', 'Validation'],
+      ['mvp', 'MVP'],
+      ['traction', 'Traction'],
+    ]) {
+      const count = Number(data.find((row) => row.stage === stage).startups);
+      await list
+        .getByRole('link', { name: `${name}: ${count} ${count === 1 ? 'startup' : 'startups'}` })
+        .waitFor();
+    }
+    assert(Number(data.find((r) => r.stage === 'validation').startups) >= 1, 'validation count');
+  });
+
   section('Startups list and detail');
   await check('3. admin finds the test startup with search', async () => {
     await adminPage.goto(`${BASE}/admin/startups`);
@@ -230,6 +296,32 @@ try {
     await adminPage.getByText(publishedTitle).waitFor();
     assert((await adminPage.getByText(draftTitle).count()) === 0, 'draft visible to admin');
   });
+
+  await check(
+    '6b. journey tab: stage, progress, requirements, evidence, linked updates — read-only',
+    async () => {
+      await adminPage.getByRole('tab', { name: 'Journey' }).click();
+      const current = adminPage.getByRole('region', { name: /^02/ });
+      await current.getByText('1 of 6 requirements completed').waitFor();
+      await current.getByText('Complete 6 more customer interviews').waitFor();
+      await adminPage.getByText(stageEvidenceLabel).waitFor();
+      await adminPage.getByText(publishedTitle).waitFor();
+      await adminPage.getByText('In Progress').first().waitFor();
+      assert(
+        (await adminPage.getByText(draftEvidenceLabel).count()) === 0,
+        'draft evidence visible to admin',
+      );
+      assert((await adminPage.getByText(draftTitle).count()) === 0, 'draft visible to admin');
+      assert(
+        (await adminPage
+          .getByRole('button', { name: /^(Update|Add Evidence|Select Metrics|Remove evidence)/ })
+          .count()) === 0,
+        'journey is editable by admin',
+      );
+      await adminPage.getByLabel('Investor Access — Locked').waitFor();
+      await shot(adminPage, '03b-admin-journey');
+    },
+  );
 
   section('Mentors, assignment, notes');
   await check('7. admin creates a mentor with a photo', async () => {

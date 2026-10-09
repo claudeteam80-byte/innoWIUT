@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { buttonClasses } from '@/components/ui/button-styles';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { externalUrl } from '@/domain/contact';
@@ -26,7 +27,13 @@ import { TractionEmptyState } from '@/features/traction/components/TractionEmpty
 import { useEntries, useMetrics } from '@/features/traction/hooks';
 import { UpdateCard } from '@/features/updates/components/UpdateCard';
 import { UpdateDialog } from '@/features/updates/components/UpdateDialog';
-import { useUpdates } from '@/features/updates/hooks';
+import { useUpdateContext, useUpdates } from '@/features/updates/hooks';
+import { journeySummary, stageName } from '@/domain/journey';
+import {
+  CurrentStageCard,
+  NextBestActionCard,
+} from '@/features/journey/components/CurrentStageCard';
+import { useRequirements } from '@/features/journey/hooks';
 import { firstName } from '@/lib/text';
 import { publicFileUrl } from '@/lib/storage';
 
@@ -39,11 +46,23 @@ export function DashboardPage() {
   const entries = useEntries(startupId);
   const updates = useUpdates(startupId);
   const mentor = useAssignedMentor(startupId);
+  const requirements = useRequirements(startupId);
+  const context = useUpdateContext(startupId);
   const [dialog, setDialog] = useState<'update' | 'traction' | 'metric' | null>(null);
 
   const name = firstName(profile?.full_name);
   const metricList = metrics.data ?? [];
   const latestPublished = (updates.data ?? []).find((u) => u.status === 'published') ?? null;
+  // Deterministic: driven only by the startup's incomplete requirements.
+  const journey =
+    startup.data && requirements.data && metrics.data
+      ? journeySummary(startup.data.journey_stage, requirements.data, metrics.data)
+      : null;
+  const continueJourney = (
+    <Link to={paths.founder.journey} className={buttonClasses({ size: 'md' })}>
+      Continue Journey <ArrowRight aria-hidden="true" />
+    </Link>
+  );
 
   if (startup.isError) return <ErrorState onRetry={() => void startup.refetch()} />;
 
@@ -81,6 +100,17 @@ export function DashboardPage() {
             <Skeleton className="h-36 w-full rounded-xl" />
           ) : (
             <StartupSummary startup={startup.data} />
+          )}
+
+          {requirements.isError ? (
+            <ErrorState
+              description="We couldn't load your journey."
+              onRetry={() => void requirements.refetch()}
+            />
+          ) : journey ? (
+            <CurrentStageCard summary={journey} action={continueJourney} />
+          ) : (
+            <Skeleton className="h-52 w-full rounded-xl" />
           )}
 
           <section aria-labelledby="traction-overview" className="space-y-3">
@@ -144,7 +174,7 @@ export function DashboardPage() {
             ) : updates.isPending ? (
               <Skeleton className="h-40 w-full rounded-xl" />
             ) : latestPublished ? (
-              <UpdateCard update={latestPublished} compact />
+              <UpdateCard update={latestPublished} context={context} compact />
             ) : (
               <EmptyState
                 icon={FileText}
@@ -161,6 +191,21 @@ export function DashboardPage() {
         </div>
 
         <div className="space-y-6">
+          {journey ? (
+            <NextBestActionCard
+              summary={journey}
+              action={
+                <Link
+                  to={paths.founder.journey}
+                  className={buttonClasses({ variant: 'outline', fullWidth: true })}
+                >
+                  Continue <ArrowRight aria-hidden="true" />
+                </Link>
+              }
+            />
+          ) : (
+            !requirements.isError && <Skeleton className="h-36 w-full rounded-xl" />
+          )}
           <Card>
             <CardHeader title="Current goal" />
             {startup.isPending ? (
@@ -262,7 +307,7 @@ function StartupSummary({ startup }: { startup: Startup }) {
   const website = externalUrl(startup.website);
   const facts = [
     startup.industry,
-    startup.stage,
+    stageName(startup.journey_stage),
     startup.team_size
       ? `${startup.team_size} ${startup.team_size === 1 ? 'person' : 'people'}`
       : null,

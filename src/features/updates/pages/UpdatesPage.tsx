@@ -16,7 +16,8 @@ import { removeFile } from '@/lib/storage';
 import { deleteDraft, publishDraft, type StartupUpdate } from '../api';
 import { UpdateCard } from '../components/UpdateCard';
 import { UpdateDialog } from '../components/UpdateDialog';
-import { useUpdates } from '../hooks';
+import { useUpdateContext, useUpdates } from '../hooks';
+import { canQuickPublish } from '../schemas';
 
 type Filter = 'all' | 'draft' | 'published';
 
@@ -25,6 +26,7 @@ export function UpdatesPage() {
   const startup = useMyStartup();
   const startupId = startup.data?.id;
   const updates = useUpdates(startupId);
+  const context = useUpdateContext(startupId);
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<StartupUpdate | null>(null);
   const [creating, setCreating] = useState(false);
@@ -51,12 +53,21 @@ export function UpdatesPage() {
 
   const remove = useMutation({
     mutationFn: async (update: StartupUpdate) => {
+      // Evidence rows go with the draft (database cascade); their files are removed here.
+      const files = (context?.evidence ?? [])
+        .filter((item) => item.update_id === update.id && item.file_path)
+        .map((item) => item.file_path);
       const deleted = await deleteDraft(update.id);
       if (!deleted) throw new Error('Only drafts can be deleted.');
-      await removeFile('update-attachments', update.image_path);
+      await Promise.all(
+        [update.image_path, ...files].map((path) => removeFile('update-attachments', path)),
+      );
     },
     onSuccess: async () => {
-      await refresh();
+      await Promise.all([
+        refresh(),
+        queryClient.invalidateQueries({ queryKey: founderKeys.evidence(startupId ?? '') }),
+      ]);
       setDeleting(null);
       toast.success('Draft deleted.');
     },
@@ -64,8 +75,8 @@ export function UpdatesPage() {
   });
 
   function onPublish(update: StartupUpdate) {
-    if (!update.summary?.trim()) {
-      toast.info('Add what happened before publishing.');
+    if (!canQuickPublish(update)) {
+      toast.info('Add what moved and a progress type before publishing.');
       setEditing(update);
       return;
     }
@@ -79,7 +90,7 @@ export function UpdatesPage() {
       <PageHeader
         eyebrow="Updates"
         title="Startup Updates"
-        subtitle="Post simple progress updates so innoWIUT can follow what you ship."
+        subtitle="Prove progress — what changed, what backs it up and what is next."
         actions={
           <Button onClick={create} disabled={!startupId}>
             <Plus aria-hidden="true" /> Create Update
@@ -138,6 +149,7 @@ export function UpdatesPage() {
                 <UpdateCard
                   key={update.id}
                   update={update}
+                  context={context}
                   onEdit={() => setEditing(update)}
                   onPublish={() => onPublish(update)}
                   onDelete={() => setDeleting(update)}
@@ -166,7 +178,7 @@ export function UpdatesPage() {
         open={deleting !== null}
         onOpenChange={(open) => !open && setDeleting(null)}
         title="Delete this draft?"
-        description="The draft and its image will be permanently removed. Published updates cannot be deleted."
+        description="The draft, its image and its evidence will be permanently removed. Published updates cannot be deleted."
         confirmLabel="Delete draft"
         pending={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting)}

@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { ChoiceGroup } from '@/components/ui/ChoiceGroup';
 import { SelectField, TextareaField } from '@/components/ui/Field';
 import { TextField } from '@/components/ui/TextField';
-import { CURRENCIES, FOUNDER_ROLES, INDUSTRIES, STAGES } from '@/domain/options';
+import { CURRENCIES, FOUNDER_ROLES, INDUSTRIES, STAGE_OPTIONS } from '@/domain/options';
 import { authKeys } from '@/features/auth/query-keys';
 import { useAuth } from '@/features/auth/useAuth';
 import { founderKeys } from '@/features/founder-keys';
@@ -293,7 +293,8 @@ export function OnboardingPage() {
                     label="Startup stage"
                     required
                     placeholder="Select stage"
-                    options={STAGES}
+                    options={STAGE_OPTIONS}
+                    hint="Your Startup Journey starts here."
                     error={errors.stage?.message}
                     {...register('stage')}
                   />

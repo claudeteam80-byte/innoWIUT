@@ -17,7 +17,7 @@ Without valid env vars the app shows a "not configured" screen instead of crashi
 | `npm run lint` | ESLint |
 | `npm test` | Vitest unit/component tests (no Supabase needed) |
 | `npm run build` | Typecheck + production build to `dist/` |
-| `npm run test:db` | Applies all migrations to a throwaway local Postgres and runs `supabase/tests/rls.test.sql`. Needs Postgres server binaries (`initdb`, `pg_ctl`) and must run as a non-root user. Uses minimal stand-ins for Supabase's `auth`/`storage` schemas (`supabase/tests/supabase_stubs.sql`). |
+| `npm run test:db` | Applies all migrations to a throwaway local Postgres and runs `supabase/tests/rls.test.sql` and `journey.test.sql`, then replays the V1 migrations on a second cluster, loads V1-shaped data (`supabase/tests/compat/`) and proves the V2.1 migrations keep it intact. Needs Postgres server binaries (`initdb`, `pg_ctl`) and must run as a non-root user. Uses minimal stand-ins for Supabase's `auth`/`storage` schemas (`supabase/tests/supabase_stubs.sql`). |
 
 With the Supabase CLI and Docker you can instead run the full local stack: `npx supabase start`
 (uses `supabase/config.toml`, including the email templates; emails appear in the local inbox UI).
@@ -127,6 +127,24 @@ person first, then revoke the old account — the database never allows zero sup
 - Traction entries are append-only; metric current/previous values are maintained by a trigger.
 - Storage: `startup-logos` (public), `update-attachments` (private, signed URLs), `mentor-photos` (public);
   object paths start with the owning startup/mentor id.
+- Startup Journey (V2.1):
+  - `startups.journey_stage` (`idea` … `investor_access`) is derived once from the V1 `startups.stage`
+    label (Early Traction and Growth → `traction`) and has no client column grant. Nothing advances it
+    automatically — completing every requirement only shows "Stage requirements completed".
+    `startups.stage` is kept unchanged for V1 compatibility.
+  - `startup_stage_requirements`: Idea / Validation / MVP rows are created from fixed templates by
+    trigger (`private.stage_requirement_templates()`); founders update `status`, `progress_value` and
+    `linked_metric_id` only (`completed_at` is server-set). Traction rows are chosen by the founder
+    from a fixed list and link their existing traction metrics. Investor stages cannot hold rows.
+  - `stage_evidence`: append-only for founders (insert/delete), each type carries exactly its value
+    (URL, file in the startup's own `update-attachments` folder, text, or a reference to one of the
+    startup's own metrics — traction values are never copied). Admins read evidence except evidence
+    attached to an unpublished draft update, and write nothing.
+  - `startup_updates` gains `progress_types`, `blocker`, `next_milestone`, `next_milestone_date`,
+    `linked_stage`; V1 columns and rows are unchanged and still render.
+  - `admin_stage_distribution()` counts onboarded startups per stage in Postgres (admins only).
+  - Evidence files reuse the private `update-attachments` bucket (PDF added to its allowed types);
+    no new bucket.
 - Route guards in the app are UX only — RLS is the real enforcement.
 - Any new table needs explicit grants and RLS policies (the first migration revokes Supabase's default grants).
 
@@ -146,9 +164,9 @@ Management API). Every record they create is labelled (`innowiut-temp` emails, `
 | --- | --- |
 | `npm run remote:auth -- signup --email=you+innowiut-temp-founder@example.com` | Real signup; sends the 6-digit code email |
 | `npm run remote:auth -- verify --code=123456` | Verifies the code, tests login and forgot/reset password |
-| `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions (Founder A / Founder B / temporary admin; no email sent) |
-| `npm run remote:journey -- --email=you+innowiut-temp-journey@example.com` | Full founder journey in a real browser: signup, 6-digit verification, onboarding with logo, traction, draft → published update with image, profile + team, mentor + meeting request, reload persistence, phone layout. Needs the built app served on port 4175 (`npm run build && npx vite preview --port 4175 --strictPort`). It sends one real verification email, reads the matching code from Supabase's stored hash of it and types it into the verify screen. Cleans up after itself. |
-| `npm run remote:admin-journey` | Admin journey in two real browsers (admin + founder): login, dashboard stats checked against `admin_dashboard_stats()`, startup search, detail tabs (traction, published-only updates), mentor creation with photo, assignment, notes, founder meeting request, admin confirmation, founder sees "Confirmed", cross-role route guards, tablet/phone layouts. Needs the built app on port 4175. Sends no email. |
+| `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions, Startup Journey (requirements, evidence ownership, locked stages, no auto-advance, draft-evidence visibility, stage distribution) (Founder A / Founder B / temporary admin; no email sent) |
+| `npm run remote:journey -- --email=you+innowiut-temp-journey@example.com` | Full founder journey in a real browser: signup, 6-digit verification, onboarding with logo, traction, Startup Journey (requirement progress, URL + PDF evidence, traction proof, completion without auto-advance), draft → published structured update with evidence and traction movement, profile + team, mentor + meeting request, reload persistence, phone layout. Needs the built app served on port 4175 (`npm run build && npx vite preview --port 4175 --strictPort`). It sends one real verification email, reads the matching code from Supabase's stored hash of it and types it into the verify screen. Cleans up after itself. Add `--no-email` (and omit `--email`) to skip the signup email: the account is created pre-confirmed and signs in through the real login screen. |
+| `npm run remote:admin-journey` | Admin journey in two real browsers (admin + founder): login, dashboard stats checked against `admin_dashboard_stats()`, startup search, Stage Distribution checked against `admin_stage_distribution()`, detail tabs (read-only Journey with draft evidence hidden, traction, published-only updates), mentor creation with photo, assignment, notes, founder meeting request, admin confirmation, founder sees "Confirmed", cross-role route guards, tablet/phone layouts. Needs the built app on port 4175. Sends no email. |
 | `npm run remote:access-journey` | Admin access management in real browsers: `/admin/access` refused to founders and admins, grant via the UI, the new admin can sign in, revoke, the revoked account is refused at `/admin/login`, history entries, self-removal blocked for the only superadmin, promotion with typed email. Uses temporary accounts only; needs the built app on port 4175. |
 | `npm run remote:ui-audit` | Visits every page as visitor, founder, new founder, admin and superadmin at desktop, laptop, tablet and phone widths. Reports console errors, failed requests, broken images, horizontal overflow, stuck loading states, unnamed buttons, small tap targets and dead links. Add `--screenshots=<dir>` to save every page. `BASE_URL=https://www.foundertrack.space` runs it against production. Uses temporary accounts only. |
 | `npm run remote:cleanup` | Deletes every temporary user, row and file and prints what remains |

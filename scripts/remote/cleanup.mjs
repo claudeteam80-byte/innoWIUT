@@ -61,6 +61,10 @@ const [remaining] = await sql(`
     (select count(*) from public.mentors where name like '${TEMP_NAME_PREFIX}%') as temp_mentors,
     (select count(*) from public.admin_role_events where target_email like ${like}) as temp_role_events,
     (select count(*) from public.startups where name like '${TEMP_NAME_PREFIX}%') as temp_startups,
+    (select count(*) from public.startup_stage_requirements r
+      where not exists (select 1 from public.startups s where s.id = r.startup_id)) as orphan_requirements,
+    (select count(*) from public.stage_evidence e
+      where e.label like '${TEMP_NAME_PREFIX}%') as temp_evidence,
     (select count(*) from storage.objects where split_part(name, '/', 1) in (${folderList})) as temp_objects
 `);
 console.log('remaining temp records:', remaining);

@@ -4,7 +4,7 @@ import { localToday } from '@/domain/form-fields';
 import type { buildUpdateRow } from './schemas';
 
 export type StartupUpdate = Tables<'startup_updates'>;
-type UpdateRow = ReturnType<typeof buildUpdateRow> & { image_path: string | null };
+type UpdateRow = ReturnType<typeof buildUpdateRow>;
 
 export async function fetchUpdates(startupId: string): Promise<StartupUpdate[]> {
   const { data, error } = await supabase
