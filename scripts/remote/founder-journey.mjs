@@ -269,17 +269,18 @@ try {
   section('Startup Journey');
   const PDF = Buffer.from('%PDF-1.4\n%innowiut-temp evidence\n%%EOF\n');
   await check(
-    'Continue Journey opens the journey at the current stage with locked investor stages',
+    'Continue Journey opens the journey at the current stage; Investor Access stays locked',
     async () => {
       await page.goto(`${BASE}/founder/dashboard`);
       await page.getByRole('link', { name: 'Continue Journey' }).click();
       await page.waitForURL(/\/founder\/journey$/);
       await page.getByRole('heading', { name: 'Startup Journey' }).waitFor();
       await page.getByRole('heading', { name: 'MVP', level: 2, exact: true }).waitFor();
-      await page.getByLabel('Investor Readiness — Locked').waitFor();
+      // V2.3: Investor Readiness is an upcoming stage; Investor Access stays locked.
+      await page.getByRole('button', { name: /^Investor Readiness — Upcoming/ }).waitFor();
       await page.getByLabel('Investor Access — Locked').waitFor();
       assert(
-        (await page.getByRole('button', { name: /Investor/ }).count()) === 0,
+        (await page.getByRole('button', { name: /Investor Access/ }).count()) === 0,
         'locked stage is clickable',
       );
       await shot('07-journey');
