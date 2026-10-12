@@ -434,6 +434,92 @@ export type Database = {
           },
         ];
       };
+      stage_reviews: {
+        Row: {
+          admin_note: string | null;
+          attention_requirement_ids: string[];
+          created_at: string;
+          feedback: string | null;
+          from_stage: Database['public']['Enums']['startup_stage'];
+          id: string;
+          requested_at: string;
+          requested_by: string | null;
+          requirements_completed: number;
+          requirements_total: number;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          reviewer_name: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['stage_review_status'];
+          to_stage: Database['public']['Enums']['startup_stage'];
+        };
+        Insert: {
+          admin_note?: string | null;
+          attention_requirement_ids?: string[];
+          created_at?: string;
+          feedback?: string | null;
+          from_stage: Database['public']['Enums']['startup_stage'];
+          id?: string;
+          requested_at?: string;
+          requested_by?: string | null;
+          requirements_completed?: number;
+          requirements_total?: number;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          reviewer_name?: string | null;
+          startup_id: string;
+          status?: Database['public']['Enums']['stage_review_status'];
+          to_stage: Database['public']['Enums']['startup_stage'];
+        };
+        Update: {
+          admin_note?: string | null;
+          attention_requirement_ids?: string[];
+          created_at?: string;
+          feedback?: string | null;
+          from_stage?: Database['public']['Enums']['startup_stage'];
+          id?: string;
+          requested_at?: string;
+          requested_by?: string | null;
+          requirements_completed?: number;
+          requirements_total?: number;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          reviewer_name?: string | null;
+          startup_id?: string;
+          status?: Database['public']['Enums']['stage_review_status'];
+          to_stage?: Database['public']['Enums']['startup_stage'];
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stage_reviews_requested_by_fkey';
+            columns: ['requested_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_reviews_reviewed_by_fkey';
+            columns: ['reviewed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_reviews_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'stage_reviews_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       startup_stage_requirements: {
         Row: {
           completed_at: string | null;
@@ -936,6 +1022,43 @@ export type Database = {
           role: Database['public']['Enums']['app_role'];
         }[];
       };
+      admin_review_queue: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_search?: string;
+          p_sort?: string;
+          p_stage?: string;
+          p_status?: string;
+        };
+        Returns: {
+          current_stage: Database['public']['Enums']['startup_stage'];
+          days_waiting: number;
+          evidence_count: number;
+          founder_email: string;
+          founder_name: string;
+          from_stage: Database['public']['Enums']['startup_stage'];
+          id: string;
+          requested_at: string;
+          requirements_completed: number;
+          requirements_total: number;
+          reviewed_at: string;
+          reviewer_name: string;
+          startup_id: string;
+          startup_logo_path: string;
+          startup_name: string;
+          status: Database['public']['Enums']['stage_review_status'];
+          to_stage: Database['public']['Enums']['startup_stage'];
+          total_count: number;
+        }[];
+      };
+      admin_review_stats: {
+        Args: never;
+        Returns: {
+          pending_reviews: number;
+          waiting_over_3_days: number;
+        }[];
+      };
       admin_stage_distribution: {
         Args: never;
         Returns: {
@@ -997,6 +1120,39 @@ export type Database = {
         };
       };
       complete_onboarding: { Args: { payload: Json }; Returns: string };
+      decide_stage_review: {
+        Args: {
+          p_admin_note?: string;
+          p_decision: Database['public']['Enums']['stage_review_status'];
+          p_feedback?: string;
+          p_requirement_ids?: string[];
+          p_review_id: string;
+        };
+        Returns: {
+          admin_note: string | null;
+          attention_requirement_ids: string[];
+          created_at: string;
+          feedback: string | null;
+          from_stage: Database['public']['Enums']['startup_stage'];
+          id: string;
+          requested_at: string;
+          requested_by: string | null;
+          requirements_completed: number;
+          requirements_total: number;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          reviewer_name: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['stage_review_status'];
+          to_stage: Database['public']['Enums']['startup_stage'];
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'stage_reviews';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       delete_mentor: { Args: { p_mentor_id: string }; Returns: string };
       end_mentor_assignment: {
         Args: { p_startup_id: string };
@@ -1068,6 +1224,33 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      request_stage_review: {
+        Args: { p_startup_id: string };
+        Returns: {
+          admin_note: string | null;
+          attention_requirement_ids: string[];
+          created_at: string;
+          feedback: string | null;
+          from_stage: Database['public']['Enums']['startup_stage'];
+          id: string;
+          requested_at: string;
+          requested_by: string | null;
+          requirements_completed: number;
+          requirements_total: number;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          reviewer_name: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['stage_review_status'];
+          to_stage: Database['public']['Enums']['startup_stage'];
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'stage_reviews';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       revoke_admin_access: {
         Args: { p_confirm_self?: boolean; p_user_id: string };
         Returns: {
@@ -1104,6 +1287,7 @@ export type Database = {
       meeting_request_status: 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
       metric_unit: 'number' | 'currency' | 'percent';
       requirement_status: 'not_started' | 'in_progress' | 'ready_for_review' | 'completed';
+      stage_review_status: 'pending' | 'needs_work' | 'approved';
       startup_stage:
         'idea' | 'validation' | 'mvp' | 'traction' | 'investor_readiness' | 'investor_access';
       update_status: 'draft' | 'published';
@@ -1242,6 +1426,7 @@ export const Constants = {
       meeting_request_status: ['requested', 'confirmed', 'completed', 'declined', 'cancelled'],
       metric_unit: ['number', 'currency', 'percent'],
       requirement_status: ['not_started', 'in_progress', 'ready_for_review', 'completed'],
+      stage_review_status: ['pending', 'needs_work', 'approved'],
       startup_stage: [
         'idea',
         'validation',
