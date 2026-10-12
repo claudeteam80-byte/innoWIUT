@@ -1504,8 +1504,14 @@ await check(
         queue.data.every((r) => r.review_type === 'investor_readiness'),
       'type filter',
     );
-    const stageOnly = await admin.rpc('admin_review_queue', { p_status: 'all', p_type: 'stage' });
-    assert(!stageOnly.data.some((r) => r.id === readinessReviewId), 'stage filter leaks');
+    const stageOnly = await admin.rpc('admin_review_queue', { p_status: null, p_type: 'stage' });
+    if (stageOnly.error) throw stageOnly.error;
+    assert(
+      stageOnly.data.length > 0 &&
+        stageOnly.data.every((r) => r.review_type === 'stage') &&
+        !stageOnly.data.some((r) => r.id === readinessReviewId),
+      'stage filter leaks',
+    );
     const stats = await admin.rpc('admin_readiness_stats');
     assert(Number(stats.data[0].pending_readiness_reviews) >= 1, 'readiness stats');
     assertDenied(await a.rpc('admin_readiness_stats'), 'founder stats');
