@@ -54,7 +54,7 @@ grant, revoke and promote admins at `/admin/access`; every role change is audite
 superadmin cannot be removed. See [docs/setup.md](docs/setup.md#admin-access-no-public-admin-signup).
 
 V2.1 Startup Journey: six stages (Idea → Validation → MVP → Traction, then Investor Readiness and
-Investor Access, which are visible but locked). Founders work deterministic stage requirements at
+Investor Access, which were locked in V2.1). Founders work deterministic stage requirements at
 `/founder/journey`, attach structured evidence (links, screenshots, PDFs, customer feedback, notes,
 references to their own traction metrics) and post structured updates (what moved, progress type,
 evidence, traction movement read from history, blocker, next milestone, linked stage). The
@@ -69,3 +69,16 @@ evidence, traction, stage-linked updates, blocker and next milestone in front of
 moves the startup to the next stage — the only way a stage ever changes. **Needs work** keeps the
 stage and sends feedback (optionally naming requirements to revisit); the founder improves and
 resubmits. Every request and decision stays in an immutable review history on both sides.
+
+V2.3 Investor Readiness: an approved Traction review moves the startup into Investor Readiness
+(stage 05). The founder works nine readiness sections — Company, Problem & Market, Product,
+Traction, Business Model, Team, Fundraising, Legal & Operations, Investor Materials — and sees a
+**readiness completion** percentage (mandatory, applicable requirements only; never a score).
+Existing data is reused, not re-entered: the startup profile, team, journey evidence and traction
+metrics (primary investor metrics are links to traction, so current / previous / change / history
+always come from Traction). Some requirements can be marked not applicable with a reason. When
+everything is complete the founder requests an **Investor Readiness review**; admins see it in the
+same review queue (Review Type filter), decide **Needs Work** (feedback, optional sections and
+requirements) or **Mark Investor Ready**, and can arrange an optional interview (date, place,
+status; the admin note stays private). Investor Ready unlocks Investor Access, which shows
+"Coming Soon" — no investor directory, matching, messaging or introductions exist yet.

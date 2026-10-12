@@ -24,6 +24,7 @@
     "remote:admin-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/admin-journey.mjs",
     "remote:review-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/review-journey.mjs",
     "remote:access-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/access-journey.mjs",
+    "remote:readiness-journey": "NODE_USE_ENV_PROXY=1 node scripts/remote/readiness-journey.mjs",
     "remote:ui-audit": "NODE_USE_ENV_PROXY=1 node scripts/remote/ui-audit.mjs"
   },
   "dependencies": {

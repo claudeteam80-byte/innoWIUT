@@ -67,6 +67,10 @@ const [remaining] = await sql(`
       where e.label like '${TEMP_NAME_PREFIX}%') as temp_evidence,
     (select count(*) from public.stage_reviews r
       where not exists (select 1 from public.startups s where s.id = r.startup_id)) as orphan_reviews,
+    (select count(*) from public.investor_readiness_requirements r
+      where not exists (select 1 from public.startups s where s.id = r.startup_id)) as orphan_readiness,
+    (select count(*) from public.readiness_interviews i
+      where not exists (select 1 from public.startups s where s.id = i.startup_id)) as orphan_interviews,
     (select count(*) from storage.objects where split_part(name, '/', 1) in (${folderList})) as temp_objects
 `);
 console.log('remaining temp records:', remaining);

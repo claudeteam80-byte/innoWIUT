@@ -6,6 +6,7 @@ import {
   assert,
   assertDenied,
   check,
+  completeReadiness,
   createConfirmedUser,
   loadEnv,
   newClient,
@@ -1128,9 +1129,451 @@ await check('resubmission is a new review; approval moves the startup to Tractio
   assert(ev.data.length >= 2, 'MVP evidence lost after advancing');
   assertDenied(
     await a.rpc('request_stage_review', { p_startup_id: startupA.id }),
-    'traction review',
+    'traction review refused until its chosen requirements are complete',
   );
 });
+
+section('Investor Readiness (V2.3)');
+let readinessMetric;
+let readinessReq = {};
+let readinessReviewId;
+await check('setup: Founder A completes a chosen Traction requirement', async () => {
+  const { data: metrics } = await a
+    .from('traction_metrics')
+    .select('id, current_value, is_archived')
+    .eq('startup_id', startupA.id);
+  readinessMetric = metrics.find((m) => !m.is_archived && m.current_value !== null);
+  if (!readinessMetric) {
+    const created = await a.rpc('add_traction_metric', {
+      p_name: 'Active Users',
+      p_unit: 'number',
+      p_initial_value: 120,
+      p_recorded_on: new Date().toISOString().slice(0, 10),
+    });
+    if (created.error) throw created.error;
+    readinessMetric = created.data;
+  }
+  const existing = await a
+    .from('startup_stage_requirements')
+    .select('id')
+    .eq('startup_id', startupA.id)
+    .eq('stage', 'traction');
+  if (existing.data.length === 0) {
+    const ins = await a.from('startup_stage_requirements').insert({
+      startup_id: startupA.id,
+      stage: 'traction',
+      requirement_key: 'active_users',
+      title: 'Active Users',
+    });
+    if (ins.error) throw ins.error;
+  }
+  const done = await a
+    .from('startup_stage_requirements')
+    .update({ status: 'completed', linked_metric_id: readinessMetric.id })
+    .eq('startup_id', startupA.id)
+    .eq('stage', 'traction');
+  if (done.error) throw done.error;
+});
+await check(
+  'before the transition there is no readiness data and no readiness review',
+  async () => {
+    const reqs = await a
+      .from('investor_readiness_requirements')
+      .select('id')
+      .eq('startup_id', startupA.id);
+    assert(reqs.data.length === 0, 'readiness rows before the stage');
+    assertDenied(
+      await a.from('investor_readiness_profiles').insert({ startup_id: startupA.id }),
+      'founder creates a profile',
+    );
+    assertDenied(
+      await a.rpc('request_investor_readiness_review', { p_startup_id: startupA.id }),
+      'readiness review at traction',
+    );
+    const state = await a.rpc('investor_readiness_state', { p_startup_id: startupA.id });
+    assert(!state.error && state.data.length === 0, JSON.stringify(state));
+  },
+);
+await check(
+  'only an approved Traction review enters Investor Readiness and initialises it',
+  async () => {
+    const { data: tr, error } = await a.rpc('request_stage_review', { p_startup_id: startupA.id });
+    if (error) throw error;
+    assert(tr.review_type === 'stage' && tr.to_stage === 'investor_readiness', JSON.stringify(tr));
+    const ok = await admin.rpc('decide_stage_review', {
+      p_review_id: tr.id,
+      p_decision: 'approved',
+    });
+    if (ok.error) throw ok.error;
+    const { data: s } = await a
+      .from('startups')
+      .select('journey_stage')
+      .eq('id', startupA.id)
+      .single();
+    assert(s.journey_stage === 'investor_readiness', s.journey_stage);
+    const reqs = await a
+      .from('investor_readiness_requirements')
+      .select('id, requirement_key')
+      .eq('startup_id', startupA.id);
+    assert(reqs.data.length === 48, `${reqs.data.length} requirements`);
+    readinessReq = Object.fromEntries(reqs.data.map((r) => [r.requirement_key, r.id]));
+    const profile = await a
+      .from('investor_readiness_profiles')
+      .select('startup_id')
+      .eq('startup_id', startupA.id);
+    assert(profile.data.length === 1, 'profile not created');
+    assertDenied(
+      await a.from('startups').update({ journey_stage: 'investor_access' }).eq('id', startupA.id),
+      'founder moves to access',
+    );
+  },
+);
+await check('anon and Founder B cannot read or change Founder A readiness', async () => {
+  for (const table of [
+    'investor_readiness_requirements',
+    'investor_readiness_profiles',
+    'investor_readiness_metrics',
+    'readiness_interviews',
+  ]) {
+    assertDenied(await anon.from(table).select('startup_id').limit(1), `anon ${table}`);
+    const seen = await b.from(table).select('startup_id').eq('startup_id', startupA.id);
+    assert(!seen.error && seen.data.length === 0, `B sees ${table}`);
+  }
+  const upd = await b
+    .from('investor_readiness_requirements')
+    .update({ text_value: 'hijack' })
+    .eq('id', readinessReq.problem_statement)
+    .select('id');
+  assert(!upd.error ? upd.data.length === 0 : true, 'B updated A requirement');
+  assertDenied(
+    await b.rpc('investor_readiness_state', { p_startup_id: startupA.id }),
+    'B reads A state',
+  );
+  assertDenied(
+    await b.rpc('request_investor_readiness_review', { p_startup_id: startupA.id }),
+    'B requests A readiness review',
+  );
+  assertDenied(
+    await anon.rpc('investor_readiness_state', { p_startup_id: startupA.id }),
+    'anon state',
+  );
+});
+await check(
+  'founders edit only their answers; titles, status and rules stay server-owned',
+  async () => {
+    const ok = await a
+      .from('investor_readiness_requirements')
+      .update({ text_value: 'Teachers grade all weekend.' })
+      .eq('id', readinessReq.problem_statement);
+    if (ok.error) throw ok.error;
+    for (const patch of [
+      { title: 'Renamed' },
+      { required: false },
+      { status: 'completed' },
+      { section: 'team' },
+      { allows_not_applicable: true },
+    ]) {
+      assertDenied(
+        await a
+          .from('investor_readiness_requirements')
+          .update(patch)
+          .eq('id', readinessReq.pitch_deck),
+        `founder writes ${Object.keys(patch)[0]}`,
+      );
+    }
+    assertDenied(
+      await a
+        .from('investor_readiness_requirements')
+        .update({ not_applicable: true, not_applicable_reason: 'No deck' })
+        .eq('id', readinessReq.pitch_deck),
+      'pitch deck marked not applicable',
+    );
+    assertDenied(
+      await a
+        .from('investor_readiness_requirements')
+        .update({ not_applicable: true })
+        .eq('id', readinessReq.financial_model),
+      'not applicable without a reason',
+    );
+    assertDenied(
+      await a.from('investor_readiness_requirements').delete().eq('id', readinessReq.pitch_deck),
+      'founder deletes a requirement',
+    );
+    const still = await a
+      .from('investor_readiness_requirements')
+      .select('id')
+      .eq('id', readinessReq.pitch_deck);
+    assert(still.data.length === 1, 'requirement deleted');
+  },
+);
+await check('primary metrics link existing traction metrics only (own, live, max 5)', async () => {
+  const own = await a
+    .from('investor_readiness_metrics')
+    .insert({ startup_id: startupA.id, metric_id: readinessMetric.id });
+  if (own.error) throw own.error;
+  const bMetric = await b
+    .from('traction_metrics')
+    .insert({ startup_id: startupB.id, name: 'B Users' }, { defaultToNull: false })
+    .select('id')
+    .single();
+  if (bMetric.error) throw bMetric.error;
+  assertDenied(
+    await a
+      .from('investor_readiness_metrics')
+      .insert({ startup_id: startupA.id, metric_id: bMetric.data.id }),
+    "linking Founder B's metric",
+  );
+  assertDenied(
+    await b
+      .from('investor_readiness_metrics')
+      .insert({ startup_id: startupB.id, metric_id: bMetric.data.id }),
+    'B outside Investor Readiness',
+  );
+  const cols = await a.from('investor_readiness_metrics').select('*').eq('startup_id', startupA.id);
+  assert(
+    cols.data.length === 1 && !('value' in cols.data[0]) && !('current_value' in cols.data[0]),
+    'traction numbers copied',
+  );
+});
+await check('readiness evidence attaches only to own readiness requirements', async () => {
+  const ok = await a.from('stage_evidence').insert({
+    startup_id: startupA.id,
+    stage: 'investor_readiness',
+    readiness_requirement_id: readinessReq.one_pager,
+    evidence_type: 'link',
+    label: `${TEMP_NAME_PREFIX} one-pager`,
+    url: 'https://example.com/one-pager',
+  });
+  if (ok.error) throw ok.error;
+  assertDenied(
+    await a.from('stage_evidence').insert({
+      startup_id: startupA.id,
+      stage: 'traction',
+      readiness_requirement_id: readinessReq.one_pager,
+      evidence_type: 'link',
+      label: `${TEMP_NAME_PREFIX} wrong stage`,
+      url: 'https://example.com',
+    }),
+    'readiness evidence on another stage',
+  );
+  assertDenied(
+    await b.from('stage_evidence').insert({
+      startup_id: startupB.id,
+      stage: 'investor_readiness',
+      readiness_requirement_id: readinessReq.one_pager,
+      evidence_type: 'link',
+      label: `${TEMP_NAME_PREFIX} B evidence`,
+      url: 'https://example.com',
+    }),
+    "B attaches to A's requirement",
+  );
+});
+await check('admins read readiness but never write founder data', async () => {
+  const seen = await admin
+    .from('investor_readiness_requirements')
+    .select('id')
+    .eq('startup_id', startupA.id);
+  assert(seen.data.length === 48, 'admin cannot read');
+  const state = await admin.rpc('investor_readiness_state', { p_startup_id: startupA.id });
+  assert(!state.error && state.data.length === 48, 'admin state');
+  const upd = await admin
+    .from('investor_readiness_profiles')
+    .update({ target_raise: 1 })
+    .eq('startup_id', startupA.id)
+    .select('startup_id');
+  assert(upd.error || upd.data.length === 0, 'admin wrote a profile');
+  const req = await admin
+    .from('investor_readiness_requirements')
+    .update({ text_value: 'admin' })
+    .eq('id', readinessReq.problem_statement)
+    .select('id');
+  assert(req.error || req.data.length === 0, 'admin wrote a requirement');
+});
+await check(
+  'interview: admin-only scheduling; founders see time and place, never the note',
+  async () => {
+    assertDenied(
+      await a.rpc('admin_set_readiness_interview', {
+        p_startup_id: startupA.id,
+        p_status: 'scheduled',
+        p_scheduled_at: new Date(Date.now() + 864e5).toISOString(),
+        p_location_or_link: 'Room 1',
+      }),
+      'founder schedules',
+    );
+    assertDenied(
+      await a.from('readiness_interviews').insert({ startup_id: startupA.id, status: 'completed' }),
+      'founder inserts interview',
+    );
+    assertDenied(
+      await admin.rpc('admin_set_readiness_interview', {
+        p_startup_id: startupA.id,
+        p_status: 'scheduled',
+      }),
+      'scheduled without time and place',
+    );
+    assertDenied(
+      await admin.rpc('admin_set_readiness_interview', {
+        p_startup_id: startupB.id,
+        p_status: 'scheduled',
+        p_scheduled_at: new Date(Date.now() + 864e5).toISOString(),
+        p_location_or_link: 'Room 1',
+      }),
+      'interview outside Investor Readiness',
+    );
+    const set = await admin.rpc('admin_set_readiness_interview', {
+      p_startup_id: startupA.id,
+      p_status: 'scheduled',
+      p_scheduled_at: new Date(Date.now() + 864e5).toISOString(),
+      p_location_or_link: 'innoWIUT office, room 204',
+      p_admin_note: `${TEMP_NAME_PREFIX} private note`,
+    });
+    if (set.error) throw set.error;
+    const own = await a
+      .from('readiness_interviews')
+      .select('status, scheduled_at, location_or_link')
+      .eq('startup_id', startupA.id)
+      .single();
+    assert(own.data.status === 'scheduled' && own.data.location_or_link, JSON.stringify(own));
+    assertDenied(
+      await a.from('readiness_interviews').select('admin_note').eq('startup_id', startupA.id),
+      'founder reads the admin note',
+    );
+    assertDenied(
+      await a.rpc('admin_readiness_interview', { p_startup_id: startupA.id }),
+      'note rpc',
+    );
+    const upd = await a
+      .from('readiness_interviews')
+      .update({ status: 'completed' })
+      .eq('startup_id', startupA.id)
+      .select('id');
+    assert(upd.error || upd.data.length === 0, 'founder edited the interview');
+    const adminView = await admin.rpc('admin_readiness_interview', { p_startup_id: startupA.id });
+    assert(adminView.data[0]?.admin_note?.includes('private note'), 'admin note');
+    const bSees = await b.from('readiness_interviews').select('id');
+    assert(bSees.data.length === 0, 'B sees interview');
+  },
+);
+await check(
+  'readiness review: incomplete is refused; complete creates an investor_readiness review',
+  async () => {
+    assertDenied(
+      await a.rpc('request_investor_readiness_review', { p_startup_id: startupA.id }),
+      'incomplete readiness',
+    );
+    await completeReadiness(a, startupA.id);
+    const { data, error } = await a.rpc('request_investor_readiness_review', {
+      p_startup_id: startupA.id,
+    });
+    if (error) throw error;
+    readinessReviewId = data.id;
+    assert(
+      data.review_type === 'investor_readiness' &&
+        data.from_stage === 'investor_readiness' &&
+        data.to_stage === 'investor_access' &&
+        data.requirements_completed === data.requirements_total,
+      JSON.stringify(data),
+    );
+    const queue = await admin.rpc('admin_review_queue', {
+      p_status: 'pending',
+      p_type: 'investor_readiness',
+    });
+    if (queue.error) throw queue.error;
+    assert(
+      queue.data.some((r) => r.id === readinessReviewId) &&
+        queue.data.every((r) => r.review_type === 'investor_readiness'),
+      'type filter',
+    );
+    const stageOnly = await admin.rpc('admin_review_queue', { p_status: 'all', p_type: 'stage' });
+    assert(!stageOnly.data.some((r) => r.id === readinessReviewId), 'stage filter leaks');
+    const stats = await admin.rpc('admin_readiness_stats');
+    assert(Number(stats.data[0].pending_readiness_reviews) >= 1, 'readiness stats');
+    assertDenied(await a.rpc('admin_readiness_stats'), 'founder stats');
+  },
+);
+await check('readiness Needs Work needs feedback, flags sections and keeps the stage', async () => {
+  assertDenied(
+    await admin.rpc('decide_stage_review', {
+      p_review_id: readinessReviewId,
+      p_decision: 'needs_work',
+    }),
+    'no feedback',
+  );
+  const { data, error } = await admin.rpc('decide_stage_review', {
+    p_review_id: readinessReviewId,
+    p_decision: 'needs_work',
+    p_feedback: `${TEMP_NAME_PREFIX} add a financial model`,
+    p_requirement_ids: [readinessReq.financial_model],
+    p_sections: ['investor_materials'],
+  });
+  if (error) throw error;
+  assert(
+    data.attention_sections.join() === 'investor_materials' &&
+      data.attention_requirement_ids.length === 1,
+    JSON.stringify(data),
+  );
+  const { data: s } = await a
+    .from('startups')
+    .select('journey_stage')
+    .eq('id', startupA.id)
+    .single();
+  assert(s.journey_stage === 'investor_readiness', s.journey_stage);
+  assertDenied(
+    await admin.from('stage_reviews').update({ feedback: 'rewritten' }).eq('id', readinessReviewId),
+    'review rewritten',
+  );
+});
+await check(
+  'resubmission is a new review; Investor Ready moves to Investor Access only',
+  async () => {
+    const second = await a.rpc('request_investor_readiness_review', { p_startup_id: startupA.id });
+    if (second.error) throw second.error;
+    assert(second.data.id !== readinessReviewId, 'same review reused');
+    const ok = await admin.rpc('decide_stage_review', {
+      p_review_id: second.data.id,
+      p_decision: 'approved',
+    });
+    if (ok.error) throw ok.error;
+    const { data: s } = await a
+      .from('startups')
+      .select('journey_stage')
+      .eq('id', startupA.id)
+      .single();
+    assert(s.journey_stage === 'investor_access', s.journey_stage);
+    const reviews = await a
+      .from('stage_reviews')
+      .select('status, review_type')
+      .eq('startup_id', startupA.id)
+      .eq('review_type', 'investor_readiness');
+    assert(
+      reviews.data
+        .map((r) => r.status)
+        .sort()
+        .join() === 'approved,needs_work',
+      JSON.stringify(reviews.data),
+    );
+    // Readiness is read-only after the stage; nothing investor-facing exists.
+    const upd = await a
+      .from('investor_readiness_requirements')
+      .update({ text_value: 'late edit' })
+      .eq('id', readinessReq.problem_statement)
+      .select('id');
+    assert(upd.error || upd.data.length === 0, 'edited after Investor Ready');
+    assertDenied(
+      await a.rpc('request_investor_readiness_review', { p_startup_id: startupA.id }),
+      'readiness review at investor access',
+    );
+    assertDenied(
+      await a.rpc('request_stage_review', { p_startup_id: startupA.id }),
+      'stage review at investor access',
+    );
+    const [tables] = await sql(
+      `select count(*)::int n from information_schema.tables where table_schema = 'public' and table_name ~ '(investor_(profiles|directory|matches|messages|introductions)|vc_|crm)'`,
+    );
+    assert(tables.n === 0, 'investor functionality tables exist');
+  },
+);
 
 await check('evidence files are removed by their owner', async () => {
   const r = await a.storage.from('update-attachments').remove([evidencePdfPath]);

@@ -115,3 +115,87 @@ export function assert(condition, message) {
 export function assertDenied(result, message) {
   if (!result.error) throw new Error(`${message} — expected an error but the call succeeded`);
 }
+
+// ---------------------------------------------------------------------------
+// Investor Readiness (V2.3) helpers — everything through the founder's own session.
+// ---------------------------------------------------------------------------
+
+/** Text answers for the requirements a founder writes themselves. */
+export const READINESS_TEXT = {
+  problem_statement: 'Teachers spend weekends grading.',
+  target_customer: 'Private schools in Tashkent.',
+  market_opportunity: 'Digital grading is new in the region.',
+  market_size: '1,200 private schools (ministry data).',
+  key_competitors: 'Paper and spreadsheets.',
+  competitive_advantage: 'Uzbek-language grading models.',
+  working_product: 'Live with 3 pilot schools.',
+  core_value_proposition: 'Grading in minutes, not weekends.',
+  revenue_model: 'Per-school subscription.',
+  pricing_model: '$90 per school per month.',
+  primary_revenue_stream: 'Subscriptions.',
+  customer_acquisition: 'Direct sales to school owners.',
+  unit_economics: 'Payback in 4 months.',
+};
+
+/**
+ * Fills every mandatory readiness requirement for a startup in Investor Readiness, except
+ * the keys in `skip`. Returns the requirement rows by key.
+ */
+export async function completeReadiness(client, startupId, { skip = [] } = {}) {
+  const reqs = await client
+    .from('investor_readiness_requirements')
+    .select('id, requirement_key')
+    .eq('startup_id', startupId);
+  if (reqs.error) throw reqs.error;
+  const byKey = Object.fromEntries(reqs.data.map((r) => [r.requirement_key, r.id]));
+  const update = async (key, patch) => {
+    if (skip.includes(key)) return;
+    const r = await client
+      .from('investor_readiness_requirements')
+      .update(patch)
+      .eq('id', byKey[key]);
+    if (r.error) throw new Error(`${key}: ${r.error.message}`);
+  };
+  for (const [key, text] of Object.entries(READINESS_TEXT)) await update(key, { text_value: text });
+  await update('product_url', { url: 'https://example.com/app' });
+  await update('demo', { url: 'https://example.com/demo' });
+  await update('pitch_deck', { url: 'https://example.com/deck.pdf' });
+  await update('financial_model', { url: 'https://example.com/model.xlsx' });
+  const site = await client
+    .from('startups')
+    .update({ website: 'https://example.com' })
+    .eq('id', startupId);
+  if (site.error) throw site.error;
+  if (!skip.includes('team_details')) {
+    const team = await client
+      .from('team_members')
+      .update({ relevant_experience: 'Built and sold an edtech product.', commitment: 'full_time' })
+      .eq('startup_id', startupId);
+    if (team.error) throw team.error;
+  }
+  const profile = await client
+    .from('investor_readiness_profiles')
+    .update({
+      business_type: 'B2B',
+      product_stage: 'launched',
+      founder_experience: '6 years in edtech.',
+      founder_commitment: 'full_time',
+      is_fundraising: true,
+      round_type: 'seed',
+      target_raise: skip.includes('target_raise') ? null : 250000,
+      raise_currency: 'USD',
+      use_of_funds: 'Two engineers and sales.',
+      runway_months: 9,
+      previous_funding: 'None',
+      round_outcome: '50 paying schools.',
+      company_registered: true,
+      jurisdiction: 'Uzbekistan',
+      legal_entity_name: 'Temp Test LLC',
+      cap_table_prepared: true,
+      ip_ownership_clear: true,
+      has_legal_blockers: false,
+    })
+    .eq('startup_id', startupId);
+  if (profile.error) throw profile.error;
+  return byKey;
+}

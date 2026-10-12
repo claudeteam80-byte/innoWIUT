@@ -193,7 +193,7 @@ try {
     await card.getByText(String(stats.n), { exact: true }).waitFor();
     await card.getByRole('link', { name: 'Open Review Queue' }).click();
     await adminPage.waitForURL(/\/admin\/reviews$/);
-    await adminPage.getByRole('heading', { name: 'Stage Reviews' }).waitFor();
+    await adminPage.getByRole('heading', { name: 'Reviews', exact: true }).waitFor();
     const table = adminPage.getByRole('table', { name: 'Stage reviews' });
     const row = table.getByRole('row', { name: new RegExp(startupName) });
     await row.getByText('Validation → MVP').waitFor();
@@ -287,7 +287,7 @@ try {
       .first()
       .waitFor();
     await adminPage.goto(`${BASE}/admin/reviews?tab=needs_work`);
-    await adminPage.getByRole('heading', { name: 'Stage Reviews' }).waitFor();
+    await adminPage.getByRole('heading', { name: 'Reviews', exact: true }).waitFor();
     await adminPage.waitForLoadState('networkidle');
     assert(
       (await adminPage.getByRole('row', { name: new RegExp(startupName) }).count()) === 0,

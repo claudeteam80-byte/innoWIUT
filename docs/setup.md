@@ -149,7 +149,7 @@ person first, then revoke the old account — the database never allows zero sup
   - `stage_reviews`: one row per review request. Founders can only insert `startup_id` for their own
     startup; a trigger fills in the current stage, the next stage, progress and requester, and refuses
     the request unless every required requirement of the current stage is completed and the next stage
-    is open (Traction → Investor Readiness stays locked). At most one pending review per startup and stage.
+    exists (Investor Access is never reviewed). At most one pending review per startup and stage.
   - Admins decide through `decide_stage_review()` (re-checked in the `SECURITY DEFINER` helper
     `private.apply_stage_review()`): approve, or needs work with required feedback and optional
     requirements to revisit. Decided reviews never change; clients have no update or delete grant.
@@ -157,6 +157,25 @@ person first, then revoke the old account — the database never allows zero sup
   - Approval is the only path that moves `startups.journey_stage` after onboarding; a trigger refuses any
     other change, including from the SQL editor.
   - `admin_review_queue()` and `admin_review_stats()` are admin-only and computed in Postgres.
+- Investor Readiness (V2.3):
+  - Approving a Traction review moves the startup to `investor_readiness`; a trigger then creates its
+    `investor_readiness_profiles` row and 48 `investor_readiness_requirements` (idempotent). Approving an
+    Investor Readiness review is the only way to `investor_access`.
+  - Completion is computed in Postgres by `public.investor_readiness_state()` (caller-checked: the
+    founder of the startup or an admin) from existing data: `startups`, `team_members`
+    (`relevant_experience`, `commitment`), the readiness profile, requirement answers, readiness and
+    journey evidence, and `investor_readiness_metrics` (links to `traction_metrics`; no values copied).
+    Not-applicable requirements need a reason and count in neither number.
+  - Founders edit only their answers (column grants) and only while in Investor Readiness; titles,
+    rules and status are server-owned. Admins read and never write founder readiness data.
+  - Readiness evidence reuses `stage_evidence` (`readiness_requirement_id`, stage `investor_readiness`)
+    and the `update-attachments` bucket.
+  - `stage_reviews.review_type` is `stage` or `investor_readiness`; Needs Work can flag
+    `attention_sections`. `request_investor_readiness_review()`, `admin_review_queue(p_type)` and
+    `admin_readiness_stats()`.
+  - `readiness_interviews`: one optional interview per startup, written only through
+    `admin_set_readiness_interview()`; founders can select every column except `admin_note`
+    (admins read it via `admin_readiness_interview()`).
 - Route guards in the app are UX only — RLS is the real enforcement.
 - Any new table needs explicit grants and RLS policies (the first migration revokes Supabase's default grants).
 
@@ -176,10 +195,11 @@ Management API). Every record they create is labelled (`innowiut-temp` emails, `
 | --- | --- |
 | `npm run remote:auth -- signup --email=you+innowiut-temp-founder@example.com` | Real signup; sends the 6-digit code email |
 | `npm run remote:auth -- verify --code=123456` | Verifies the code, tests login and forgot/reset password |
-| `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions, Startup Journey (requirements, evidence ownership, locked stages, no auto-advance, draft-evidence visibility, stage distribution) (Founder A / Founder B / temporary admin; no email sent) |
+| `npm run remote:security` | RLS, admin permissions, draft visibility, storage policies, activity functions, Startup Journey (requirements, evidence ownership, locked stages, no auto-advance, draft-evidence visibility, stage distribution), Stage Review, Investor Readiness (initialisation, column grants, not-applicable rules, metric links, readiness evidence, interview privacy, review types, Investor Ready transition) (Founder A / Founder B / temporary admin; no email sent) |
 | `npm run remote:journey -- --email=you+innowiut-temp-journey@example.com` | Full founder journey in a real browser: signup, 6-digit verification, onboarding with logo, traction, Startup Journey (requirement progress, URL + PDF evidence, traction proof, completion without auto-advance), draft → published structured update with evidence and traction movement, profile + team, mentor + meeting request, reload persistence, phone layout. Needs the built app served on port 4175 (`npm run build && npx vite preview --port 4175 --strictPort`). It sends one real verification email, reads the matching code from Supabase's stored hash of it and types it into the verify screen. Cleans up after itself. Add `--no-email` (and omit `--email`) to skip the signup email: the account is created pre-confirmed and signs in through the real login screen. |
 | `npm run remote:admin-journey` | Admin journey in two real browsers (admin + founder): login, dashboard stats checked against `admin_dashboard_stats()`, startup search, Stage Distribution checked against `admin_stage_distribution()`, detail tabs (read-only Journey with draft evidence hidden, traction, published-only updates), mentor creation with photo, assignment, notes, founder meeting request, admin confirmation, founder sees "Confirmed", cross-role route guards, tablet/phone layouts. Needs the built app on port 4175. Sends no email. |
 | `npm run remote:review-journey` | Stage Review in two real browsers (founder + admin): request → needs work with feedback and requirements to revisit → resubmit → approve → founder at the next stage, queue tabs, history on both sides, phone layouts. Needs the built app on port 4175. Sends no email. |
+| `npm run remote:readiness-journey` | Investor Readiness in two real browsers (founder + admin): Traction approved → Investor Readiness initialised from existing data → primary metric, pitch deck upload, fundraising form, not-applicable with a reason → readiness review → admin queue Review Type filter and 13-section detail → interview scheduled (founder sees time/place, not the note) → Needs Work with a flagged section → resubmit → Mark Investor Ready → Investor Access "Coming Soon", phone layouts. Needs the built app on port 4175. Sends no email. |
 | `npm run remote:access-journey` | Admin access management in real browsers: `/admin/access` refused to founders and admins, grant via the UI, the new admin can sign in, revoke, the revoked account is refused at `/admin/login`, history entries, self-removal blocked for the only superadmin, promotion with typed email. Uses temporary accounts only; needs the built app on port 4175. |
 | `npm run remote:ui-audit` | Visits every page as visitor, founder, new founder, admin and superadmin at desktop, laptop, tablet and phone widths. Reports console errors, failed requests, broken images, horizontal overflow, stuck loading states, unnamed buttons, small tap targets and dead links. Add `--screenshots=<dir>` to save every page. `BASE_URL=https://www.foundertrack.space` runs it against production. Uses temporary accounts only. |
 | `npm run remote:cleanup` | Deletes every temporary user, row and file and prints what remains |
