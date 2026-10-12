@@ -954,6 +954,184 @@ await check('stage distribution: admins only, counted in Postgres', async () => 
   const total = data.reduce((sum, row) => sum + Number(row.startups), 0);
   assert(data.length === 6 && total === expected.n, `${total} vs ${expected.n}`);
 });
+section('Stage Review (V2.2)');
+let reviewId;
+await check(
+  'setup: Founder A startup is onboarded at MVP with every MVP requirement completed',
+  async () => {
+    // Staff-side SQL: the security startups were created without the onboarding RPC.
+    await sql(
+      `update public.startups set onboarding_completed_at = now() where id in ('${startupA.id}', '${startupB.id}')`,
+    );
+    const { data } = await a
+      .from('startup_stage_requirements')
+      .select('status')
+      .eq('startup_id', startupA.id)
+      .eq('stage', 'mvp');
+    assert(data.length === 6 && data.every((r) => r.status === 'completed'), JSON.stringify(data));
+  },
+);
+await check('anon cannot read reviews or request one', async () => {
+  assertDenied(await anon.from('stage_reviews').select('*').limit(1), 'anon reviews');
+  assertDenied(
+    await anon.rpc('request_stage_review', { p_startup_id: startupA.id }),
+    'anon request',
+  );
+});
+await check(
+  'Founder B cannot request a review of Founder A startup; incomplete stages are refused',
+  async () => {
+    assertDenied(
+      await b.rpc('request_stage_review', { p_startup_id: startupA.id }),
+      'B requests A',
+    );
+    assertDenied(
+      await b.rpc('request_stage_review', { p_startup_id: startupB.id }),
+      'B incomplete',
+    );
+  },
+);
+await check(
+  'founder requests a review; the server fills in stage, next stage and progress',
+  async () => {
+    const { data, error } = await a.rpc('request_stage_review', { p_startup_id: startupA.id });
+    if (error) throw error;
+    reviewId = data.id;
+    assert(
+      data.from_stage === 'mvp' &&
+        data.to_stage === 'traction' &&
+        data.status === 'pending' &&
+        data.requirements_completed === 6 &&
+        data.requested_by === accounts.a.id,
+      JSON.stringify(data),
+    );
+    assertDenied(
+      await a.rpc('request_stage_review', { p_startup_id: startupA.id }),
+      'second pending',
+    );
+  },
+);
+await check('founders cannot decide reviews or move their stage', async () => {
+  assertDenied(
+    await a.rpc('decide_stage_review', { p_review_id: reviewId, p_decision: 'approved' }),
+    'founder decides',
+  );
+  assertDenied(
+    await a.from('stage_reviews').update({ status: 'approved' }).eq('id', reviewId),
+    'founder updates review',
+  );
+  assertDenied(
+    await a.from('startups').update({ journey_stage: 'traction' }).eq('id', startupA.id),
+    'founder moves stage',
+  );
+  const del = await a.from('stage_reviews').delete().eq('id', reviewId);
+  assert(del.error, 'founder deleted a review');
+  const seen = await b.from('stage_reviews').select('id');
+  assert(seen.data.length === 0, 'B sees A reviews');
+});
+await check('SQL cannot move an onboarded startup outside an approved review', async () => {
+  let refused = false;
+  try {
+    await sql(`update public.startups set journey_stage = 'traction' where id = '${startupA.id}'`);
+  } catch {
+    refused = true;
+  }
+  assert(refused, 'direct journey_stage change was allowed');
+});
+await check('admin queue and stats list the pending review', async () => {
+  const queue = await admin.rpc('admin_review_queue', { p_status: 'pending' });
+  if (queue.error) throw queue.error;
+  assert(
+    queue.data.some((r) => r.id === reviewId),
+    'review missing from queue',
+  );
+  const stats = await admin.rpc('admin_review_stats');
+  assert(Number(stats.data[0].pending_reviews) >= 1, 'stats');
+  assertDenied(await a.rpc('admin_review_queue'), 'founder queue');
+  assertDenied(await a.rpc('admin_review_stats'), 'founder stats');
+});
+await check(
+  'needs work requires feedback, keeps the stage and is immutable afterwards',
+  async () => {
+    assertDenied(
+      await admin.rpc('decide_stage_review', { p_review_id: reviewId, p_decision: 'needs_work' }),
+      'needs work without feedback',
+    );
+    const { data: reqs } = await admin
+      .from('startup_stage_requirements')
+      .select('id')
+      .eq('startup_id', startupA.id)
+      .eq('stage', 'mvp')
+      .eq('requirement_key', 'demo');
+    const { data, error } = await admin.rpc('decide_stage_review', {
+      p_review_id: reviewId,
+      p_decision: 'needs_work',
+      p_feedback: `${TEMP_NAME_PREFIX} add a demo video`,
+      p_requirement_ids: [reqs[0].id],
+    });
+    if (error) throw error;
+    assert(
+      data.status === 'needs_work' && data.attention_requirement_ids.length === 1,
+      JSON.stringify(data),
+    );
+    const { data: s } = await a
+      .from('startups')
+      .select('journey_stage')
+      .eq('id', startupA.id)
+      .single();
+    assert(s.journey_stage === 'mvp', 'stage moved on needs work');
+    assertDenied(
+      await admin.rpc('decide_stage_review', { p_review_id: reviewId, p_decision: 'approved' }),
+      'decided twice',
+    );
+    assertDenied(
+      await admin.from('stage_reviews').update({ feedback: 'rewritten' }).eq('id', reviewId),
+      'admin rewrites',
+    );
+    const own = await a
+      .from('stage_reviews')
+      .select('feedback, reviewer_name')
+      .eq('id', reviewId)
+      .single();
+    assert(
+      own.data.feedback?.includes('demo video') && own.data.reviewer_name,
+      'founder sees feedback',
+    );
+  },
+);
+await check('resubmission is a new review; approval moves the startup to Traction', async () => {
+  const { data: second, error } = await a.rpc('request_stage_review', {
+    p_startup_id: startupA.id,
+  });
+  if (error) throw error;
+  const approved = await admin.rpc('decide_stage_review', {
+    p_review_id: second.id,
+    p_decision: 'approved',
+    p_admin_note: `${TEMP_NAME_PREFIX} approved`,
+  });
+  if (approved.error) throw approved.error;
+  const { data: s } = await a
+    .from('startups')
+    .select('journey_stage, stage')
+    .eq('id', startupA.id)
+    .single();
+  assert(s.journey_stage === 'traction' && s.stage === 'MVP', JSON.stringify(s));
+  const history = await a.from('stage_reviews').select('status').eq('startup_id', startupA.id);
+  assert(
+    history.data
+      .map((r) => r.status)
+      .sort()
+      .join() === 'approved,needs_work',
+    JSON.stringify(history.data),
+  );
+  const ev = await a.from('stage_evidence').select('id').eq('stage', 'mvp');
+  assert(ev.data.length >= 2, 'MVP evidence lost after advancing');
+  assertDenied(
+    await a.rpc('request_stage_review', { p_startup_id: startupA.id }),
+    'traction review',
+  );
+});
+
 await check('evidence files are removed by their owner', async () => {
   const r = await a.storage.from('update-attachments').remove([evidencePdfPath]);
   assert(r.data?.length === 1, 'evidence file not removed');

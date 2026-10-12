@@ -61,3 +61,11 @@ evidence, traction movement read from history, blocker, next milestone, linked s
 dashboard shows the current stage and a deterministic next best action. Admins get a Stage
 Distribution on the dashboard and a read-only Journey tab per startup. Completing a stage's
 requirements never moves the startup: stage transitions are a later, controlled phase.
+
+V2.2 Stage Review: when every required milestone of the current stage is complete, the founder
+requests a stage review. innoWIUT admins work a review queue at `/admin/reviews` (pending / needs
+work / approved / all) and decide each review at `/admin/reviews/:id` with the requirements,
+evidence, traction, stage-linked updates, blocker and next milestone in front of them. **Approve**
+moves the startup to the next stage — the only way a stage ever changes. **Needs work** keeps the
+stage and sends feedback (optionally naming requirements to revisit); the founder improves and
+resubmits. Every request and decision stays in an immutable review history on both sides.

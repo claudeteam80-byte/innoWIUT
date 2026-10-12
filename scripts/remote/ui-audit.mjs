@@ -215,6 +215,8 @@ function routesFor(role, startupId) {
     '/admin/startups',
     `/admin/startups/${startupId}`,
     `/admin/startups/${startupId}?tab=journey`,
+    '/admin/reviews',
+    '/admin/reviews?tab=all',
     '/admin/mentors',
     '/admin/meeting-requests',
     '/admin/settings',

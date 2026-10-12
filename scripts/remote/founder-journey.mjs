@@ -350,7 +350,8 @@ try {
       }
       await page.getByText('6 of 6 requirements completed').first().waitFor();
       await page.getByText('Stage requirements completed').first().waitFor();
-      await page.getByText(/Your stage stays MVP until then/).waitFor();
+      await page.getByText(/Your stage stays MVP until innoWIUT approves a stage review/).waitFor();
+      await page.getByRole('region', { name: 'Stage ready for review' }).waitFor();
       const [row] = await sql(
         `select stage, journey_stage from public.startups where id = ${q(startupId)}`,
       );

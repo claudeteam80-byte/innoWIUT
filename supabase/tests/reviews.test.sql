@@ -286,4 +286,24 @@ select tests.expect_error('select * from public.admin_review_queue()', '42501', 
 select tests.expect_error('select * from public.admin_review_stats()', '42501', 'founder cannot read review stats');
 rollback;
 
+-- ---------------------------------------------------------------------------
+-- Account removal keeps the history (reviewer name is kept)
+-- ---------------------------------------------------------------------------
+select tests.expect_error(
+  format('update public.stage_reviews set reviewed_by = null, feedback = ''x'' where id = %L', :review_1),
+  'P0001', 'clearing a reference cannot be combined with other changes'
+);
+delete from auth.users where id = :admin_id;
+select tests.check(
+  (select count(*) from public.stage_reviews where startup_id = :startup_j) = 2
+  and (select bool_and(reviewed_by is null and reviewer_name is not null)
+       from public.stage_reviews where startup_id = :startup_j),
+  'deleting the reviewer account keeps the reviews and the reviewer name'
+);
+delete from auth.users where id = :founder_j;
+select tests.check(
+  (select count(*) from public.stage_reviews where startup_id = :startup_j) = 0,
+  'deleting a founder account removes their startup with its reviews'
+);
+
 \echo 'All stage review tests passed'
