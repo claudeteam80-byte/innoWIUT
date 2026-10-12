@@ -404,7 +404,7 @@ try {
     const card = founderPage.getByRole('region', { name: 'Needs work' });
     await card.getByText(feedback).waitFor();
     await card.getByText('Fundraising', { exact: true }).waitFor();
-    await card.getByText('Use of Funds').waitFor();
+    await card.getByText('Use of Funds', { exact: true }).waitFor();
     await founderPage.getByText('Address innoWIUT feedback').first().waitFor();
     await shot(founderPage, '06-founder-needs-work');
     await founderPage.getByRole('button', { name: 'Update Use of Funds' }).click();
