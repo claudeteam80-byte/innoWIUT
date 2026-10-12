@@ -1,16 +1,18 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { FileText, Paperclip } from 'lucide-react';
+import { paths } from '@/app/paths';
+import { buttonClasses } from '@/components/ui/button-styles';
+import { formatDate } from '@/domain/dates';
+import { canRequestReview, journeyReviewSummary } from '@/domain/reviews';
+import { ReviewHistory } from '@/features/reviews/components/ReviewHistory';
+import { ReviewStatusPill } from '@/features/reviews/components/ReviewStatusPill';
+import { useStartupReviews } from '@/features/reviews/hooks';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
-import {
-  getStage,
-  journeySummary,
-  progressText,
-  stageProgress,
-  type StageKey,
-} from '@/domain/journey';
+import { getStage, progressText, stageProgress, type StageKey } from '@/domain/journey';
 import { CurrentStageCard, StageProgressBar } from '@/features/journey/components/CurrentStageCard';
 import { EvidenceList } from '@/features/journey/components/EvidenceList';
 import { RequirementList } from '@/features/journey/components/RequirementList';
@@ -31,11 +33,12 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
   const metrics = useMetrics(startupId);
   const updates = usePublishedUpdates(startupId);
   const context = useUpdateContext(startupId);
+  const reviews = useStartupReviews(startupId);
   const [selected, setSelected] = useState<StageKey>(current);
 
-  const failed = [requirements, evidence, metrics].find((q) => q.isError);
+  const failed = [requirements, evidence, metrics, reviews].find((q) => q.isError);
   if (failed) return <ErrorState onRetry={() => void failed.refetch()} />;
-  if (!requirements.data || !evidence.data || !metrics.data) {
+  if (!requirements.data || !evidence.data || !metrics.data || !reviews.data) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Loading journey">
         <Skeleton className="h-44 w-full rounded-xl" />
@@ -45,7 +48,19 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
   }
 
   const rows = requirements.data;
-  const summary = journeySummary(current, rows, metrics.data);
+  const summary = journeyReviewSummary({
+    current,
+    requirements: rows,
+    metrics: metrics.data,
+    reviews: reviews.data,
+    evidence: evidence.data,
+  });
+  const reviewState = summary.review.state;
+  const pending = reviews.data.find((r) => r.status === 'pending') ?? null;
+  const latestFeedback =
+    [...reviews.data]
+      .filter((r) => r.status === 'needs_work')
+      .sort((a, b) => b.requested_at.localeCompare(a.requested_at))[0] ?? null;
   const stage = getStage(selected);
   const progress = stageProgress(selected, rows);
   const stageEvidence = evidence.data.filter((item) => item.stage === selected);
@@ -57,7 +72,46 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
 
   return (
     <div className="space-y-6">
-      <CurrentStageCard summary={summary} />
+      <CurrentStageCard
+        summary={summary}
+        reviewState={
+          canRequestReview(current) || reviewState !== 'not_ready' ? reviewState : undefined
+        }
+      />
+
+      <Card>
+        <CardHeader
+          title="Stage review"
+          description="Only an approved review moves this startup to the next stage."
+          action={
+            pending ? (
+              <Link
+                to={paths.admin.reviewDetail(pending.id)}
+                className={buttonClasses({ size: 'sm' })}
+              >
+                Open Review
+              </Link>
+            ) : undefined
+          }
+        />
+        <div className="space-y-3 text-[13px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted">Review status</span>
+            <ReviewStatusPill state={reviewState} />
+            {pending && (
+              <span className="text-muted">Requested {formatDate(pending.requested_at)}</span>
+            )}
+          </div>
+          {latestFeedback && (
+            <div className="rounded-lg bg-canvas-subtle px-4 py-3">
+              <p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted uppercase">
+                Latest review feedback · {formatDate(latestFeedback.reviewed_at)}
+              </p>
+              <p className="mt-1 leading-6 text-ink">“{latestFeedback.feedback}”</p>
+            </div>
+          )}
+        </div>
+      </Card>
 
       <section aria-labelledby="admin-stages" className="space-y-3">
         <h2 id="admin-stages" className="text-[15px] font-semibold text-ink">
@@ -86,8 +140,8 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
           <StageProgressBar percent={progress.percent} label={`${stage.name} progress`} />
           {progress.isComplete && (
             <p className="mt-2 text-[12.5px] font-medium text-success-strong">
-              Stage requirements completed — the startup stays at {getStage(current).name} until a
-              stage review.
+              Stage requirements completed — the startup stays at {getStage(current).name} until an
+              approved stage review.
             </p>
           )}
         </div>
@@ -139,6 +193,16 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
           )}
         </Card>
       </div>
+
+      <Card>
+        <CardHeader title="Review History" description="Every stage review request and decision." />
+        <ReviewHistory
+          reviews={reviews.data}
+          audience="admin"
+          requirementTitles={titles}
+          reviewHref={(review) => paths.admin.reviewDetail(review.id)}
+        />
+      </Card>
     </div>
   );
 }

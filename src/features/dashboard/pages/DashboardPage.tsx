@@ -28,12 +28,14 @@ import { useEntries, useMetrics } from '@/features/traction/hooks';
 import { UpdateCard } from '@/features/updates/components/UpdateCard';
 import { UpdateDialog } from '@/features/updates/components/UpdateDialog';
 import { useUpdateContext, useUpdates } from '@/features/updates/hooks';
-import { journeySummary, stageName } from '@/domain/journey';
+import { stageName } from '@/domain/journey';
+import { canRequestReview, journeyReviewSummary } from '@/domain/reviews';
 import {
   CurrentStageCard,
   NextBestActionCard,
 } from '@/features/journey/components/CurrentStageCard';
-import { useRequirements } from '@/features/journey/hooks';
+import { useEvidence, useRequirements } from '@/features/journey/hooks';
+import { useStartupReviews } from '@/features/reviews/hooks';
 import { firstName } from '@/lib/text';
 import { publicFileUrl } from '@/lib/storage';
 
@@ -47,16 +49,24 @@ export function DashboardPage() {
   const updates = useUpdates(startupId);
   const mentor = useAssignedMentor(startupId);
   const requirements = useRequirements(startupId);
+  const reviews = useStartupReviews(startupId);
+  const evidence = useEvidence(startupId);
   const context = useUpdateContext(startupId);
   const [dialog, setDialog] = useState<'update' | 'traction' | 'metric' | null>(null);
 
   const name = firstName(profile?.full_name);
   const metricList = metrics.data ?? [];
   const latestPublished = (updates.data ?? []).find((u) => u.status === 'published') ?? null;
-  // Deterministic: driven only by the startup's incomplete requirements.
+  // Deterministic: driven by the stage review state, then by incomplete requirements.
   const journey =
-    startup.data && requirements.data && metrics.data
-      ? journeySummary(startup.data.journey_stage, requirements.data, metrics.data)
+    startup.data && requirements.data && metrics.data && reviews.data
+      ? journeyReviewSummary({
+          current: startup.data.journey_stage,
+          requirements: requirements.data,
+          metrics: metrics.data,
+          reviews: reviews.data,
+          evidence: evidence.data,
+        })
       : null;
   const continueJourney = (
     <Link to={paths.founder.journey} className={buttonClasses({ size: 'md' })}>
@@ -102,13 +112,21 @@ export function DashboardPage() {
             <StartupSummary startup={startup.data} />
           )}
 
-          {requirements.isError ? (
+          {requirements.isError || reviews.isError ? (
             <ErrorState
               description="We couldn't load your journey."
-              onRetry={() => void requirements.refetch()}
+              onRetry={() => void Promise.all([requirements.refetch(), reviews.refetch()])}
             />
           ) : journey ? (
-            <CurrentStageCard summary={journey} action={continueJourney} />
+            <CurrentStageCard
+              summary={journey}
+              reviewState={
+                canRequestReview(journey.stage.key) || journey.review.state !== 'not_ready'
+                  ? journey.review.state
+                  : undefined
+              }
+              action={continueJourney}
+            />
           ) : (
             <Skeleton className="h-52 w-full rounded-xl" />
           )}
@@ -204,7 +222,8 @@ export function DashboardPage() {
               }
             />
           ) : (
-            !requirements.isError && <Skeleton className="h-36 w-full rounded-xl" />
+            !requirements.isError &&
+            !reviews.isError && <Skeleton className="h-36 w-full rounded-xl" />
           )}
           <Card>
             <CardHeader title="Current goal" />

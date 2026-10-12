@@ -27,6 +27,8 @@ interface RequirementListProps {
   onUpdate?: (row: StageRequirement) => void;
   onAddEvidence?: (row: StageRequirement) => void;
   highlightId?: string | null;
+  /** Requirements innoWIUT asked the founder to revisit (needs work). */
+  attentionIds?: readonly string[];
 }
 
 export function RequirementList({
@@ -36,6 +38,7 @@ export function RequirementList({
   onUpdate,
   onAddEvidence,
   highlightId,
+  attentionIds = [],
 }: RequirementListProps) {
   return (
     <ul className="divide-y divide-line">
@@ -59,6 +62,7 @@ export function RequirementList({
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-[14px] font-semibold text-ink">{row.title}</h3>
                   <StatusBadge status={row.status} />
+                  {attentionIds.includes(row.id) && <Badge tone="danger">Needs attention</Badge>}
                 </div>
                 {(template?.hint || row.description) && (
                   <p className="mt-0.5 text-[12.5px] text-muted">

@@ -39,7 +39,11 @@ export const useStartupActivity = (id: string) =>
   useQuery({ queryKey: adminKeys.activity(id), queryFn: () => fetchStartupActivity(id) });
 
 export const usePublishedUpdates = (id: string) =>
-  useQuery({ queryKey: ['admin', 'updates', id], queryFn: () => fetchPublishedUpdates(id) });
+  useQuery({
+    queryKey: ['admin', 'updates', id],
+    queryFn: () => fetchPublishedUpdates(id),
+    enabled: Boolean(id),
+  });
 
 export const useAssignments = (id: string) =>
   useQuery({ queryKey: adminKeys.assignments(id), queryFn: () => fetchAssignments(id) });

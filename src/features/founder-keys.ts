@@ -10,4 +10,5 @@ export const founderKeys = {
   signedUrl: (path: string) => ['signed-url', path] as const,
   requirements: (startupId: string) => ['stage-requirements', startupId] as const,
   evidence: (startupId: string) => ['stage-evidence', startupId] as const,
+  reviews: (startupId: string) => ['stage-reviews', startupId] as const,
 };

@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { CheckCircle2, Compass } from 'lucide-react';
 import { progressText, type journeySummary } from '@/domain/journey';
+import type { ReviewState } from '@/domain/reviews';
+import { ReviewStatusPill } from '@/features/reviews/components/ReviewStatusPill';
 import { cn } from '@/lib/cn';
 
 type Summary = ReturnType<typeof journeySummary>;
@@ -31,10 +33,13 @@ export function CurrentStageCard({
   summary,
   action,
   className,
+  reviewState,
 }: {
   summary: Summary;
   action?: ReactNode;
   className?: string;
+  /** Review status of the current stage (omitted where a stage cannot be reviewed). */
+  reviewState?: ReviewState;
 }) {
   return (
     <section
@@ -58,9 +63,12 @@ export function CurrentStageCard({
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">{summary.stage.purpose}</p>
         </div>
-        <p className="text-[22px] font-semibold text-primary" aria-hidden="true">
-          {summary.percent}%
-        </p>
+        <div className="flex flex-col items-end gap-1.5">
+          <p className="text-[22px] font-semibold text-primary" aria-hidden="true">
+            {summary.percent}%
+          </p>
+          {reviewState && <ReviewStatusPill state={reviewState} />}
+        </div>
       </div>
       <div className="mt-4 space-y-2">
         <StageProgressBar percent={summary.percent} label={`${summary.stage.name} progress`} />

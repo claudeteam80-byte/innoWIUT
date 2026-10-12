@@ -65,6 +65,14 @@ const AdminStartupDetailPage = page(
   () => import('@/features/admin/pages/AdminStartupDetailPage'),
   (m) => m.AdminStartupDetailPage,
 );
+const AdminReviewsPage = page(
+  () => import('@/features/reviews/pages/AdminReviewsPage'),
+  (m) => m.AdminReviewsPage,
+);
+const AdminReviewDetailPage = page(
+  () => import('@/features/reviews/pages/AdminReviewDetailPage'),
+  (m) => m.AdminReviewDetailPage,
+);
 const AdminMentorsPage = page(
   () => import('@/features/admin/pages/AdminMentorsPage'),
   (m) => m.AdminMentorsPage,
@@ -140,6 +148,8 @@ const appRoutes: RouteObject[] = [
           { path: paths.admin.dashboard, element: <AdminDashboardPage /> },
           { path: paths.admin.startups, element: <AdminStartupsPage /> },
           { path: `${paths.admin.startups}/:id`, element: <AdminStartupDetailPage /> },
+          { path: paths.admin.reviews, element: <AdminReviewsPage /> },
+          { path: `${paths.admin.reviews}/:reviewId`, element: <AdminReviewDetailPage /> },
           { path: paths.admin.mentors, element: <AdminMentorsPage /> },
           { path: paths.admin.meetingRequests, element: <AdminMeetingRequestsPage /> },
           { path: paths.admin.settings, element: <AdminSettingsPage /> },

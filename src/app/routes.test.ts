@@ -50,6 +50,12 @@ describe('route table', () => {
     );
   });
 
+  it('registers the V2.2 admin review routes', () => {
+    expect(allPaths).toEqual(
+      expect.arrayContaining(['/admin/reviews', '/admin/reviews/:reviewId']),
+    );
+  });
+
   it('does not ship V2.1 out-of-scope areas', () => {
     expect(allPaths.filter((path) => /investor|fundrais|vc/i.test(path))).toEqual([]);
   });

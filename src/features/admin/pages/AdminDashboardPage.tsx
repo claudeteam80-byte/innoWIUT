@@ -9,6 +9,7 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDate } from '@/domain/dates';
 import { publicFileUrl } from '@/lib/storage';
+import { ReviewsWaitingCard } from '@/features/reviews/components/ReviewsWaitingCard';
 import { StageDistribution } from '../components/StageDistribution';
 import { StatCard } from '../components/StatCard';
 import { useDashboardStats, useRecentUpdates } from '../hooks';
@@ -66,7 +67,10 @@ export function AdminDashboardPage() {
       )}
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <StageDistribution />
+        <div className="space-y-6">
+          <ReviewsWaitingCard />
+          <StageDistribution />
+        </div>
         <Card className="xl:col-span-2">
           <CardHeader
             title="Recent founder updates"

@@ -3,6 +3,10 @@ import type { StartupListParams } from './api';
 export const adminKeys = {
   stats: ['admin', 'stats'] as const,
   stageDistribution: ['admin', 'stage-distribution'] as const,
+  reviewStats: ['admin', 'review-stats'] as const,
+  reviewQueue: (params: object) => ['admin', 'review-queue', params] as const,
+  reviewQueueAll: ['admin', 'review-queue'] as const,
+  review: (id: string) => ['admin', 'review', id] as const,
   recentUpdates: ['admin', 'recent-updates'] as const,
   startups: (params: StartupListParams) => ['admin', 'startups', params] as const,
   startupsAll: ['admin', 'startups'] as const,

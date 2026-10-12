@@ -20,10 +20,10 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { canRequestReview, journeyReviewSummary } from '@/domain/reviews';
 import {
   getStage,
   isStageKey,
-  journeySummary,
   progressText,
   nextAction,
   stagePosition,
@@ -35,6 +35,9 @@ import {
 import { founderKeys } from '@/features/founder-keys';
 import { useMyStartup } from '@/features/startup/hooks';
 import { useMetrics } from '@/features/traction/hooks';
+import { ReviewHistory } from '@/features/reviews/components/ReviewHistory';
+import { StageReviewCard } from '@/features/reviews/components/StageReviewCard';
+import { useStartupReviews } from '@/features/reviews/hooks';
 import { UpdateCard } from '@/features/updates/components/UpdateCard';
 import { UpdateDialog } from '@/features/updates/components/UpdateDialog';
 import { useUpdateContext, useUpdates } from '@/features/updates/hooks';
@@ -73,6 +76,7 @@ export function JourneyPage() {
   const evidence = useEvidence(startupId);
   const metrics = useMetrics(startupId);
   const updates = useUpdates(startupId);
+  const reviews = useStartupReviews(startupId);
   const context = useUpdateContext(startupId);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [removing, setRemoving] = useState<StageEvidence | null>(null);
@@ -104,7 +108,7 @@ export function JourneyPage() {
     />
   );
 
-  const failed = [startup, requirements, evidence, metrics].find((q) => q.isError);
+  const failed = [startup, requirements, evidence, metrics, reviews].find((q) => q.isError);
   if (failed) {
     return (
       <div className="space-y-6">
@@ -113,7 +117,7 @@ export function JourneyPage() {
       </div>
     );
   }
-  if (!startup.data || !requirements.data || !evidence.data || !metrics.data) {
+  if (!startup.data || !requirements.data || !evidence.data || !metrics.data || !reviews.data) {
     return (
       <div className="space-y-6" aria-busy="true" aria-label="Loading your journey">
         {header}
@@ -132,7 +136,25 @@ export function JourneyPage() {
   const rows = requirements.data;
   const allEvidence = evidence.data;
   const metricList = metrics.data;
-  const summary = journeySummary(current, rows, metricList);
+  const summary = journeyReviewSummary({
+    current,
+    requirements: rows,
+    metrics: metricList,
+    reviews: reviews.data,
+    evidence: allEvidence,
+  });
+  const currentProgress = stageProgress(current, rows);
+  const attentionIds =
+    summary.review.state === 'needs_work' && selectedKey === current
+      ? (summary.review.review?.attention_requirement_ids ?? [])
+      : [];
+  const goToRequirements = () => {
+    if (selectedKey !== current) void navigate(paths.founder.journeyStage(current));
+    window.setTimeout(
+      () => document.getElementById('stage-requirements')?.scrollIntoView({ behavior: 'smooth' }),
+      50,
+    );
+  };
   const progress = stageProgress(selectedKey, rows);
   const next = nextAction(selectedKey, rows, metricList);
   const position = stagePosition(selectedKey, current);
@@ -163,6 +185,11 @@ export function JourneyPage() {
 
       <CurrentStageCard
         summary={summary}
+        reviewState={
+          canRequestReview(current) || summary.review.state !== 'not_ready'
+            ? summary.review.state
+            : undefined
+        }
         action={
           selectedKey !== current ? (
             <Button onClick={() => void navigate(paths.founder.journeyStage(current))}>
@@ -170,6 +197,16 @@ export function JourneyPage() {
             </Button>
           ) : undefined
         }
+      />
+
+      <StageReviewCard
+        startupId={startup.data.id}
+        current={current}
+        info={summary.review}
+        stageComplete={currentProgress.isComplete}
+        requirementTitles={titles}
+        onUpdateEvidence={goToRequirements}
+        onContinue={goToRequirements}
       />
 
       <section aria-labelledby="stages-title" className="space-y-3">
@@ -224,8 +261,11 @@ export function JourneyPage() {
                 Stage requirements completed
               </p>
               <p className="mt-0.5 text-[12.5px] text-ink/80">
-                Stage review by innoWIUT opens in a later V2 phase. Your stage stays{' '}
-                {getStage(current).name} until then — keep your evidence up to date.
+                {selectedKey !== current
+                  ? 'Your evidence for this stage stays available.'
+                  : canRequestReview(current)
+                    ? `Your stage stays ${getStage(current).name} until innoWIUT approves a stage review.`
+                    : 'Investor Readiness opens in a later phase — keep your traction evidence up to date.'}
               </p>
             </div>
           </div>
@@ -244,7 +284,7 @@ export function JourneyPage() {
         )}
       </section>
 
-      <Card>
+      <Card className="scroll-mt-6" id="stage-requirements">
         <CardHeader
           title="Requirements"
           description={
@@ -272,6 +312,7 @@ export function JourneyPage() {
             evidence={allEvidence}
             metrics={metricList}
             highlightId={next.requirementId}
+            attentionIds={attentionIds}
             onUpdate={(row) => setDialog({ kind: 'requirement', row })}
             onAddEvidence={(row) => setDialog({ kind: 'evidence', row })}
           />
@@ -345,6 +386,14 @@ export function JourneyPage() {
           )}
         </Card>
       </div>
+
+      <Card>
+        <CardHeader
+          title="Review History"
+          description="Every stage review innoWIUT has received and decided."
+        />
+        <ReviewHistory reviews={reviews.data} audience="founder" requirementTitles={titles} />
+      </Card>
 
       <RequirementDialog
         open={dialog?.kind === 'requirement'}

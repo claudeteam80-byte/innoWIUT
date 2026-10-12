@@ -5,6 +5,8 @@ import { RouterProvider } from 'react-router/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { signedInAs, TestProviders } from '@/test/auth-test-utils';
 import { MentorDialog } from './components/MentorDialog';
+import { AdminReviewDetailPage } from '@/features/reviews/pages/AdminReviewDetailPage';
+import { AdminReviewsPage } from '@/features/reviews/pages/AdminReviewsPage';
 import { JourneyTab } from './components/JourneyTab';
 import { MentorTab, UpdatesTab } from './components/StartupTabs';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
@@ -48,6 +50,17 @@ const journeyApi = vi.hoisted(() => ({
   deleteEvidence: vi.fn(),
 }));
 vi.mock('@/features/journey/api', () => journeyApi);
+const reviewApi = vi.hoisted(() => ({
+  REVIEW_PAGE_SIZE: 25,
+  reviewQueueArgs: vi.fn(),
+  fetchStartupReviews: vi.fn(),
+  requestStageReview: vi.fn(),
+  fetchReviewQueue: vi.fn(),
+  fetchReviewStats: vi.fn(),
+  fetchReview: vi.fn(),
+  decideReview: vi.fn(),
+}));
+vi.mock('@/features/reviews/api', () => reviewApi);
 const tractionApi = vi.hoisted(() => ({ fetchMetrics: vi.fn(), fetchEntries: vi.fn() }));
 vi.mock('@/features/traction/api', () => tractionApi);
 vi.mock('@/features/updates/hooks', () => ({
@@ -146,6 +159,9 @@ beforeEach(() => {
   tractionApi.fetchMetrics.mockResolvedValue([]);
   tractionApi.fetchEntries.mockResolvedValue([]);
   journeyApi.fetchEvidence.mockResolvedValue([]);
+  reviewApi.fetchStartupReviews.mockResolvedValue([]);
+  reviewApi.fetchReviewStats.mockResolvedValue({ pending_reviews: 4, waiting_over_3_days: 2 });
+  reviewApi.fetchReviewQueue.mockResolvedValue({ rows: [], total: 0 });
   api.fetchMentors.mockResolvedValue([mentor(), mentor({ id: 'mentor-2', name: 'Bobur Aliev' })]);
 });
 
@@ -636,5 +652,340 @@ describe('AdminMeetingRequestsPage', () => {
     await vi.waitFor(() =>
       expect(api.fetchMeetingRequests).toHaveBeenLastCalledWith('declined', 1),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V2.2 Stage Review
+// ---------------------------------------------------------------------------
+
+const stageReview = (overrides: Record<string, unknown> = {}) => ({
+  id: 'rev-1',
+  startup_id: 's',
+  from_stage: 'validation',
+  to_stage: 'mvp',
+  status: 'pending',
+  requirements_completed: 6,
+  requirements_total: 6,
+  requested_by: 'f1',
+  requested_at: '2026-10-08T09:00:00Z',
+  reviewed_by: null,
+  reviewer_name: null,
+  reviewed_at: null,
+  feedback: null,
+  admin_note: null,
+  attention_requirement_ids: [],
+  created_at: '2026-10-08T09:00:00Z',
+  ...overrides,
+});
+
+const queueRow = (overrides: Record<string, unknown> = {}) => ({
+  id: 'rev-1',
+  startup_id: 's',
+  startup_name: 'Gamma Labs',
+  startup_logo_path: null,
+  founder_name: 'Dilnoza Yusupova',
+  founder_email: 'd@example.com',
+  current_stage: 'validation',
+  from_stage: 'validation',
+  to_stage: 'mvp',
+  status: 'pending',
+  requirements_completed: 6,
+  requirements_total: 6,
+  evidence_count: 7,
+  requested_at: '2026-10-08T09:00:00Z',
+  reviewed_at: null,
+  reviewer_name: null,
+  days_waiting: 4,
+  total_count: 1,
+  ...overrides,
+});
+
+const validationRequirement = (key: string, title: string) => ({
+  id: `req-${key}`,
+  startup_id: 's',
+  stage: 'validation',
+  requirement_key: key,
+  title,
+  description: null,
+  required: true,
+  status: 'completed',
+  progress_value: null,
+  progress_target: null,
+  linked_metric_id: null,
+  completed_at: '2026-10-07T00:00:00Z',
+  created_at: '2026-10-01T00:00:00Z',
+  updated_at: '2026-10-07T00:00:00Z',
+});
+
+describe('Reviews waiting card', () => {
+  it('shows pending reviews and how many wait more than 3 days', async () => {
+    api.fetchDashboardStats.mockResolvedValue({
+      total_startups: 1,
+      active_startups: 0,
+      needs_update_startups: 0,
+      inactive_startups: 0,
+      updates_this_week: 0,
+      growing_startups: 0,
+      unassigned_startups: 0,
+      open_meeting_requests: 0,
+    });
+    renderAt(<AdminDashboardPage />);
+    const card = await screen.findByRole('region', { name: 'Reviews waiting' });
+    expect(await within(card).findByText('4')).toBeInTheDocument();
+    expect(within(card).getByText('2 waiting more than 3 days')).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: 'Open Review Queue' })).toHaveAttribute(
+      'href',
+      '/admin/reviews',
+    );
+    // Existing KPIs stay.
+    expect(screen.getByRole('region', { name: 'Ecosystem stats' })).toBeInTheDocument();
+  });
+});
+
+describe('AdminReviewsPage', () => {
+  it('defaults to pending reviews, oldest first, and shows the queue columns', async () => {
+    reviewApi.fetchReviewQueue.mockResolvedValue({ rows: [queueRow()], total: 1 });
+    renderAt(<AdminReviewsPage />, '/admin/reviews');
+    expect(screen.getByRole('heading', { name: 'Stage Reviews' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Review founder progress and approve stage transitions.'),
+    ).toBeInTheDocument();
+    const table = await screen.findByRole('table', { name: 'Stage reviews' });
+    expect(within(table).getByText('Gamma Labs')).toBeInTheDocument();
+    expect(within(table).getByText('Validation → MVP')).toBeInTheDocument();
+    expect(within(table).getByText('6/6')).toBeInTheDocument();
+    expect(within(table).getByText('7')).toBeInTheDocument();
+    expect(within(table).getByText('4 days')).toBeInTheDocument();
+    expect(within(table).getByText('Pending Review')).toBeInTheDocument();
+    expect(within(table).getByRole('link', { name: 'Review Gamma Labs' })).toHaveAttribute(
+      'href',
+      '/admin/reviews/rev-1',
+    );
+    expect(reviewApi.fetchReviewQueue).toHaveBeenLastCalledWith(
+      expect.objectContaining({ tab: 'pending', sort: 'oldest', stage: '', page: 1 }),
+    );
+  });
+
+  it('switches tabs and sends search, stage and sort to the database', async () => {
+    const user = userEvent.setup();
+    renderAt(<AdminReviewsPage />, '/admin/reviews');
+    await screen.findByText('No reviews waiting');
+    await user.click(screen.getByRole('tab', { name: 'Needs Work' }));
+    await user.selectOptions(screen.getByLabelText('Stage'), 'validation');
+    await user.selectOptions(screen.getByLabelText('Sort'), 'newest');
+    await user.type(screen.getByLabelText('Search'), 'gam');
+    await vi.waitFor(() =>
+      expect(reviewApi.fetchReviewQueue).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          tab: 'needs_work',
+          stage: 'validation',
+          sort: 'newest',
+          search: 'gam',
+        }),
+      ),
+    );
+    await user.click(screen.getByRole('tab', { name: 'All' }));
+    await vi.waitFor(() =>
+      expect(reviewApi.fetchReviewQueue).toHaveBeenLastCalledWith(
+        expect.objectContaining({ tab: 'all' }),
+      ),
+    );
+  });
+});
+
+function renderReview(id = 'rev-1') {
+  const router = createMemoryRouter(
+    [{ path: '/admin/reviews/:reviewId', element: <AdminReviewDetailPage /> }],
+    { initialEntries: [`/admin/reviews/${id}`] },
+  );
+  render(
+    <TestProviders auth={signedInAs('admin')}>
+      <RouterProvider router={router} />
+    </TestProviders>,
+  );
+}
+
+describe('AdminReviewDetailPage', () => {
+  beforeEach(() => {
+    reviewApi.fetchReview.mockResolvedValue({
+      ...stageReview(),
+      startup: {
+        id: 's',
+        name: 'Gamma Labs',
+        tagline: null,
+        logo_path: null,
+        journey_stage: 'validation',
+        owner: { id: 'f1', full_name: 'Dilnoza Yusupova', email: 'd@example.com' },
+      },
+    });
+    journeyApi.fetchRequirements.mockResolvedValue([
+      validationRequirement('customer_interviews', 'Customer Interviews'),
+      validationRequirement('problem_validation', 'Problem Validation'),
+    ]);
+    journeyApi.fetchEvidence.mockResolvedValue([
+      {
+        id: 'e1',
+        startup_id: 's',
+        requirement_id: 'req-customer_interviews',
+        update_id: null,
+        stage: 'validation',
+        evidence_type: 'customer_feedback',
+        label: 'Teacher interview',
+        text_value: 'Grading takes all weekend.',
+        url: null,
+        file_path: null,
+        linked_metric_id: null,
+        created_by: null,
+        created_at: '2026-10-02T00:00:00Z',
+      },
+    ]);
+    api.fetchPublishedUpdates.mockResolvedValue([
+      {
+        id: 'u1',
+        startup_id: 's',
+        author_id: null,
+        title: 'Interview sprint',
+        summary: 'Ten interviews done',
+        highlights: [],
+        challenge: null,
+        next_steps: null,
+        image_path: null,
+        link_url: null,
+        progress_types: ['Customer Validation'],
+        blocker: 'Finding schools',
+        next_milestone: 'Launch MVP pilot',
+        next_milestone_date: '2026-11-01',
+        linked_stage: 'validation',
+        status: 'published',
+        update_date: '2026-10-05',
+        published_at: '2026-10-05T00:00:00Z',
+        created_at: '',
+        updated_at: '',
+      },
+    ]);
+    reviewApi.decideReview.mockImplementation(async (input: { decision: string }) =>
+      stageReview({ status: input.decision, reviewed_at: '2026-10-12T00:00:00Z' }),
+    );
+  });
+
+  it('shows the stage summary, requirements, evidence, traction, updates and plan', async () => {
+    renderReview();
+    expect(await screen.findByRole('heading', { name: 'Gamma Labs' })).toBeInTheDocument();
+    expect(screen.getAllByText('Validation → MVP').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pending Review').length).toBeGreaterThan(0);
+    for (const title of [
+      '1. Stage summary',
+      '2. Requirements',
+      '3. Evidence (1)',
+      '4. Traction',
+      '5. Recent founder updates',
+      '6. Blockers & next milestone',
+    ]) {
+      expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+    }
+    expect(await screen.findByText('Teacher interview')).toBeInTheDocument();
+    expect(screen.getByText('Dilnoza Yusupova · d@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('Interview sprint')).toBeInTheDocument();
+    expect(screen.getAllByText('Finding schools').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Approve Stage' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Needs Work' })).toBeInTheDocument();
+  });
+
+  it('approves with a confirmation that names the move', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    await user.click(await screen.findByRole('button', { name: 'Approve Stage' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Approve Validation stage?' });
+    expect(
+      within(dialog).getByText('This will move Gamma Labs from Validation to MVP.'),
+    ).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Note to the founder/), 'Great work');
+    await user.click(within(dialog).getByRole('button', { name: 'Approve & Move to MVP' }));
+    await vi.waitFor(() =>
+      expect(reviewApi.decideReview).toHaveBeenCalledWith({
+        reviewId: 'rev-1',
+        decision: 'approved',
+        adminNote: 'Great work',
+      }),
+    );
+  });
+
+  it('needs work requires feedback and can flag requirements', async () => {
+    const user = userEvent.setup();
+    renderReview();
+    await user.click(await screen.findByRole('button', { name: 'Needs Work' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Send back to founder' });
+    await user.click(within(dialog).getByRole('button', { name: 'Send Back to Founder' }));
+    expect(
+      within(dialog).getByText('Tell the founder what needs improvement.'),
+    ).toBeInTheDocument();
+    expect(reviewApi.decideReview).not.toHaveBeenCalled();
+    await user.type(
+      within(dialog).getByLabelText(/What needs improvement/),
+      'Add at least 3 more customer interview notes.',
+    );
+    await user.click(within(dialog).getByLabelText('Customer Interviews'));
+    await user.click(within(dialog).getByRole('button', { name: 'Send Back to Founder' }));
+    await vi.waitFor(() =>
+      expect(reviewApi.decideReview).toHaveBeenCalledWith({
+        reviewId: 'rev-1',
+        decision: 'needs_work',
+        feedback: 'Add at least 3 more customer interview notes.',
+        requirementIds: ['req-customer_interviews'],
+      }),
+    );
+  });
+
+  it('shows the recorded decision instead of actions once decided', async () => {
+    reviewApi.fetchReview.mockResolvedValue({
+      ...stageReview({
+        status: 'needs_work',
+        reviewed_at: '2026-10-11T10:00:00Z',
+        reviewer_name: 'Aziza Admin',
+        feedback: 'Add interview notes.',
+      }),
+      startup: {
+        id: 's',
+        name: 'Gamma Labs',
+        tagline: null,
+        logo_path: null,
+        journey_stage: 'validation',
+        owner: null,
+      },
+    });
+    renderReview();
+    expect(await screen.findByText(/by Aziza Admin/)).toBeInTheDocument();
+    expect(screen.getByText('“Add interview notes.”')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve Stage' })).not.toBeInTheDocument();
+  });
+});
+
+describe('JourneyTab review status (admin)', () => {
+  it('shows the review status, Open Review for a pending review, feedback and history', async () => {
+    journeyApi.fetchRequirements.mockResolvedValue([
+      validationRequirement('customer_interviews', 'Customer Interviews'),
+    ]);
+    reviewApi.fetchStartupReviews.mockResolvedValue([
+      stageReview({ id: 'rev-2', requested_at: '2026-10-12T08:00:00Z' }),
+      stageReview({
+        id: 'rev-1',
+        status: 'needs_work',
+        reviewed_at: '2026-10-11T10:00:00Z',
+        reviewer_name: 'Aziza Admin',
+        feedback: 'Add interview notes.',
+      }),
+    ]);
+    api.fetchPublishedUpdates.mockResolvedValue([]);
+    renderAt(<JourneyTab startupId="s" current="validation" />);
+    expect(await screen.findByRole('link', { name: 'Open Review' })).toHaveAttribute(
+      'href',
+      '/admin/reviews/rev-2',
+    );
+    expect(screen.getAllByText('Pending Review').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('“Add interview notes.”').length).toBeGreaterThan(0);
+    const history = screen.getByRole('list', { name: 'Review history' });
+    expect(within(history).getAllByText('Validation → MVP')).toHaveLength(2);
+    expect(within(history).getByText(/Reviewed by Aziza Admin/)).toBeInTheDocument();
   });
 });

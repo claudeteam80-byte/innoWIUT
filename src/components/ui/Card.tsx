@@ -1,9 +1,18 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className,
+  id,
+}: {
+  children: ReactNode;
+  className?: string;
+  id?: string;
+}) {
   return (
     <section
+      id={id}
       className={cn('rounded-xl border border-line bg-white p-5 shadow-card sm:p-6', className)}
     >
       {children}

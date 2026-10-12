@@ -24,6 +24,8 @@ export const paths = {
     dashboard: '/admin/dashboard',
     startups: '/admin/startups',
     startupDetail: (id: string) => `/admin/startups/${encodeURIComponent(id)}`,
+    reviews: '/admin/reviews',
+    reviewDetail: (id: string) => `/admin/reviews/${encodeURIComponent(id)}`,
     mentors: '/admin/mentors',
     meetingRequests: '/admin/meeting-requests',
     access: '/admin/access',
