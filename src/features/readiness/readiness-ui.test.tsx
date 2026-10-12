@@ -346,6 +346,31 @@ describe('Investor Readiness (founder)', () => {
     expect(screen.getAllByText('Attend scheduled interview').length).toBeGreaterThan(0);
   });
 
+  it('right after the Traction approval it is not "Investor Ready"', async () => {
+    state.reviews = [
+      review({
+        id: 'rev-t',
+        from_stage: 'traction',
+        to_stage: 'investor_readiness',
+        review_type: 'stage',
+        status: 'approved',
+        reviewed_at: new Date().toISOString(),
+        reviewer_name: 'A',
+      }),
+    ];
+    state.requirements = (state.rows as ReadinessStateRow[]).map((r) => ({
+      ...ownRow(r),
+      updated_at: '2000-01-01T00:00:00Z',
+    }));
+    state.profile = { ...(state.profile as object), updated_at: '2000-01-01T00:00:00Z' };
+    renderJourney();
+    const card = await screen.findByRole('region', { name: /^05/ });
+    expect(within(card).getByText('Approved')).toBeInTheDocument();
+    expect(within(card).getByText('Upload pitch deck')).toBeInTheDocument();
+    expect(screen.queryByText('Investor Ready')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Stage approved' })).toBeInTheDocument();
+  });
+
   it('after Investor Ready, shows Investor Access unlocked with Coming Soon only', async () => {
     state.stage = 'investor_access';
     state.rows = stateRows(true);

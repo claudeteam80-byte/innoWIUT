@@ -35,6 +35,7 @@ export function CurrentStageCard({
   className,
   reviewState,
   reviewType = 'stage',
+  pillType,
 }: {
   summary: Summary;
   action?: ReactNode;
@@ -42,6 +43,8 @@ export function CurrentStageCard({
   /** Review status of the current stage (omitted where a stage cannot be reviewed). */
   reviewState?: ReviewState;
   reviewType?: ReviewType;
+  /** Type of the review the status pill is about (e.g. the Traction approval), if different. */
+  pillType?: ReviewType;
 }) {
   const access = summary.stage.key === 'investor_access';
   const readiness = reviewType === 'investor_readiness' && !access;
@@ -73,7 +76,7 @@ export function CurrentStageCard({
               {summary.percent}%{readiness && <span className="text-[13px]"> complete</span>}
             </p>
           )}
-          {reviewState && <ReviewStatusPill state={reviewState} type={reviewType} />}
+          {reviewState && <ReviewStatusPill state={reviewState} type={pillType ?? reviewType} />}
         </div>
       </div>
       {access ? (

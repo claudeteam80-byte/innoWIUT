@@ -143,6 +143,7 @@ export function DashboardPage() {
           ) : journey ? (
             <CurrentStageCard
               summary={journey}
+              pillType={journey.review.review?.review_type}
               reviewType={
                 stage === 'investor_readiness' || stage === 'investor_access'
                   ? 'investor_readiness'

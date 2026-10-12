@@ -373,7 +373,7 @@ try {
     await adminPage.getByText(`${TEMP_NAME_PREFIX} ask about churn`).first().waitFor();
     await founderPage.goto(`${BASE}/founder/journey`);
     const card = founderPage.getByRole('region', { name: 'Readiness interview' });
-    await card.getByText('Scheduled').waitFor();
+    await card.getByText('Scheduled', { exact: true }).waitFor();
     await card.getByText('innoWIUT office, room 204').waitFor();
     await card.getByText(/January 15, 2030/).waitFor();
     assert((await card.getByRole('button').count()) === 0, 'founder can edit the interview');
@@ -390,7 +390,7 @@ try {
     await dialog.getByRole('button', { name: 'Send Back to Founder' }).click();
     await dialog.getByText('Tell the founder what needs improvement.').waitFor();
     await dialog.getByLabel(/What needs improvement/).fill(feedback);
-    await dialog.getByLabel('Fundraising').check();
+    await dialog.getByLabel('Fundraising', { exact: true }).check();
     await dialog.getByLabel('Use of Funds').check();
     await dialog.getByRole('button', { name: 'Send Back to Founder' }).click();
     await toast(adminPage, 'Sent back to the founder');
@@ -403,7 +403,7 @@ try {
     await founderPage.goto(`${BASE}/founder/journey`);
     const card = founderPage.getByRole('region', { name: 'Needs work' });
     await card.getByText(feedback).waitFor();
-    await card.getByText('Fundraising').waitFor();
+    await card.getByText('Fundraising', { exact: true }).waitFor();
     await card.getByText('Use of Funds').waitFor();
     await founderPage.getByText('Address innoWIUT feedback').first().waitFor();
     await shot(founderPage, '06-founder-needs-work');
@@ -459,8 +459,8 @@ try {
   section('Founder: Investor Access');
   await check('Investor Access is unlocked with Coming Soon only', async () => {
     await founderPage.goto(`${BASE}/founder/journey`);
-    const access = founderPage.getByRole('region', { name: 'Investor Access' });
-    await access.getByText('Unlocked').waitFor();
+    const access = founderPage.getByRole('region', { name: 'Investor Access', exact: true });
+    await access.getByText('Unlocked', { exact: true }).waitFor();
     await access.getByText('Investor introductions will be available in the next stage.').waitFor();
     assert(
       await access.getByRole('button', { name: 'Coming Soon' }).isDisabled(),

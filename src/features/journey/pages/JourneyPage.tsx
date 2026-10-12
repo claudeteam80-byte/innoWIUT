@@ -237,6 +237,7 @@ export function JourneyPage() {
 
       <CurrentStageCard
         summary={summary}
+        pillType={summary.review.review?.review_type}
         reviewType={inReadiness || current === 'investor_access' ? 'investor_readiness' : 'stage'}
         reviewState={
           canRequestReview(current) || summary.review.state !== 'not_ready'

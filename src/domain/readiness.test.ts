@@ -157,8 +157,9 @@ describe('readiness next action', () => {
         interview: { status: 'scheduled' },
       }).title,
     ).toBe('Attend scheduled interview');
+    // The Traction approval that opened the stage does not make the startup Investor Ready.
     expect(readinessNextAction({ rows, review: { ...idle, state: 'approved' } }).intent).toBe(
-      'access',
+      'request',
     );
   });
 });

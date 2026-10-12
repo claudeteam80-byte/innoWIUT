@@ -147,6 +147,7 @@ export interface ReadinessNextAction extends NextAction {
 
 /**
  * The single next thing to do in Investor Readiness. Deterministic for the same input:
+ * (An approved state is the Traction approval that opened the stage; it changes nothing here.)
  *   review pending + interview scheduled → attend interview
  *   review pending → wait for the review
  *   needs work → address feedback (resubmit once complete and changed)
@@ -174,9 +175,7 @@ export function readinessNextAction(input: {
     requirementKey: row?.requirement_key ?? null,
   });
 
-  if (review.state === 'approved') {
-    return action('access', 'Investor Ready — Investor Access is unlocked');
-  }
+  // 'approved' here is the Traction approval that opened this stage: work continues below.
   if (review.state === 'pending') {
     return scheduled
       ? action('interview', 'Attend scheduled interview')

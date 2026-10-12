@@ -112,6 +112,7 @@ export function JourneyTab({
     <div className="space-y-6">
       <CurrentStageCard
         summary={summary}
+        pillType={summary.review.review?.review_type}
         reviewType={investorStage ? 'investor_readiness' : 'stage'}
         reviewState={
           canRequestReview(current) || reviewState !== 'not_ready' ? reviewState : undefined

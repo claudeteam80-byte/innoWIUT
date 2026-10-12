@@ -15,7 +15,13 @@ import {
 import type { Entry, Metric } from '@/features/traction/api';
 import type { Tables } from '@/types/database';
 import { editTarget, type EditTarget } from '../ui-helpers';
-import { requirementSource, requirementValue, type ReadinessContext } from '../values';
+import { EvidenceList } from '@/features/journey/components/EvidenceList';
+import {
+  readinessEvidenceFor,
+  requirementSource,
+  requirementValue,
+  type ReadinessContext,
+} from '../values';
 import { PrimaryMetricsTable } from './PrimaryMetrics';
 
 const SECTION_STATUS: Record<
@@ -84,6 +90,14 @@ export function ReadinessSections({
                 const source = requirementSource(row);
                 const own = context.requirements.find((r) => r.id === row.requirement_id);
                 const target = editTarget(row);
+                // Attached readiness evidence plus reused journey evidence, openable by both sides.
+                const linked = context.evidence.find(
+                  (e) => e.id === own?.linked_existing_evidence_id,
+                );
+                const files = [
+                  ...readinessEvidenceFor(row.requirement_id, context.evidence),
+                  ...(linked ? [linked] : []),
+                ];
                 return (
                   <li
                     key={row.requirement_id}
@@ -110,6 +124,11 @@ export function ReadinessSections({
                           {value}
                         </p>
                       ) : null}
+                      {!row.not_applicable && files.length > 0 && (
+                        <div className="mt-2">
+                          <EvidenceList items={files} metrics={metrics} />
+                        </div>
+                      )}
                     </div>
                     {onEdit &&
                       (target.kind === 'startup_profile' ? (
