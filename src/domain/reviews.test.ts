@@ -28,6 +28,8 @@ const review = (overrides: Partial<StageReview>): StageReview => ({
   feedback: null,
   admin_note: null,
   attention_requirement_ids: [],
+  attention_sections: [],
+  review_type: 'stage',
   created_at: '2026-10-10T09:00:00Z',
   ...overrides,
 });

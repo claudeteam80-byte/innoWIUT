@@ -675,6 +675,8 @@ const stageReview = (overrides: Record<string, unknown> = {}) => ({
   feedback: null,
   admin_note: null,
   attention_requirement_ids: [],
+  attention_sections: [],
+  review_type: 'stage',
   created_at: '2026-10-08T09:00:00Z',
   ...overrides,
 });
@@ -689,6 +691,7 @@ const queueRow = (overrides: Record<string, unknown> = {}) => ({
   current_stage: 'validation',
   from_stage: 'validation',
   to_stage: 'mvp',
+  review_type: 'stage',
   status: 'pending',
   requirements_completed: 6,
   requirements_total: 6,

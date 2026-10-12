@@ -61,4 +61,16 @@ select compat.check(
   'update-attachments stays private and accepts evidence documents'
 );
 
-\echo 'All V1 → V2.1 compatibility tests passed'
+select compat.check(
+  (select count(*) from public.investor_readiness_requirements) = 0
+  and (select count(*) from public.investor_readiness_profiles) = 0
+  and (select count(*) from public.stage_reviews) = 0,
+  'V2.3 creates no readiness data or reviews for existing startups'
+);
+select compat.check(
+  (select count(*) from public.team_members) = 0
+  or (select bool_and(relevant_experience is null and commitment is null) from public.team_members),
+  'existing team members keep their data; readiness fields start empty'
+);
+
+\echo 'All V1 → V2.3 compatibility tests passed'

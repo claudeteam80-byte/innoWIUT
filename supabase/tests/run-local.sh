@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Applies all migrations to throwaway local Postgres clusters and runs the database tests.
-#   1. all migrations → rls.test.sql + journey.test.sql + reviews.test.sql
+#   1. all migrations → rls.test.sql + journey.test.sql + reviews.test.sql + readiness.test.sql
 #   2. V1 migrations → V1-shaped fixture data → remaining migrations → compat.test.sql
 #      (proves the V2.1 migrations keep existing production data intact)
 # Requires Postgres server binaries (initdb, pg_ctl) on PATH or in PG_BIN.
@@ -47,6 +47,7 @@ for migration in "$ROOT"/supabase/migrations/*.sql; do apply "$migration"; done
 "${PSQL[@]}" -o /dev/null -f "$ROOT/supabase/tests/rls.test.sql"
 "${PSQL[@]}" -o /dev/null -f "$ROOT/supabase/tests/journey.test.sql"
 "${PSQL[@]}" -o /dev/null -f "$ROOT/supabase/tests/reviews.test.sql"
+"${PSQL[@]}" -o /dev/null -f "$ROOT/supabase/tests/readiness.test.sql"
 stop_cluster
 
 echo "== Phase 2: V1 data survives the V2.1 migrations"

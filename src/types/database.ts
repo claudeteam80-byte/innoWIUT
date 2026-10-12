@@ -56,6 +56,250 @@ export type Database = {
           },
         ];
       };
+      investor_readiness_metrics: {
+        Row: {
+          created_at: string;
+          id: string;
+          metric_id: string;
+          startup_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          metric_id: string;
+          startup_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          metric_id?: string;
+          startup_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'investor_readiness_metrics_metric_id_fkey';
+            columns: ['metric_id'];
+            isOneToOne: false;
+            referencedRelation: 'traction_metrics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_metrics_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_metrics_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      investor_readiness_profiles: {
+        Row: {
+          business_type: string | null;
+          cap_table_prepared: boolean | null;
+          company_registered: boolean | null;
+          created_at: string;
+          founder_commitment: Database['public']['Enums']['team_commitment'] | null;
+          founder_experience: string | null;
+          has_legal_blockers: boolean | null;
+          ip_ownership_clear: boolean | null;
+          is_fundraising: boolean | null;
+          jurisdiction: string | null;
+          legal_blockers_note: string | null;
+          legal_entity_name: string | null;
+          previous_funding: string | null;
+          product_stage: string | null;
+          raise_currency: Database['public']['Enums']['currency_code'] | null;
+          round_outcome: string | null;
+          round_type: string | null;
+          runway_months: number | null;
+          startup_id: string;
+          target_raise: number | null;
+          updated_at: string;
+          use_of_funds: string | null;
+          valuation: number | null;
+        };
+        Insert: {
+          business_type?: string | null;
+          cap_table_prepared?: boolean | null;
+          company_registered?: boolean | null;
+          created_at?: string;
+          founder_commitment?: Database['public']['Enums']['team_commitment'] | null;
+          founder_experience?: string | null;
+          has_legal_blockers?: boolean | null;
+          ip_ownership_clear?: boolean | null;
+          is_fundraising?: boolean | null;
+          jurisdiction?: string | null;
+          legal_blockers_note?: string | null;
+          legal_entity_name?: string | null;
+          previous_funding?: string | null;
+          product_stage?: string | null;
+          raise_currency?: Database['public']['Enums']['currency_code'] | null;
+          round_outcome?: string | null;
+          round_type?: string | null;
+          runway_months?: number | null;
+          startup_id: string;
+          target_raise?: number | null;
+          updated_at?: string;
+          use_of_funds?: string | null;
+          valuation?: number | null;
+        };
+        Update: {
+          business_type?: string | null;
+          cap_table_prepared?: boolean | null;
+          company_registered?: boolean | null;
+          created_at?: string;
+          founder_commitment?: Database['public']['Enums']['team_commitment'] | null;
+          founder_experience?: string | null;
+          has_legal_blockers?: boolean | null;
+          ip_ownership_clear?: boolean | null;
+          is_fundraising?: boolean | null;
+          jurisdiction?: string | null;
+          legal_blockers_note?: string | null;
+          legal_entity_name?: string | null;
+          previous_funding?: string | null;
+          product_stage?: string | null;
+          raise_currency?: Database['public']['Enums']['currency_code'] | null;
+          round_outcome?: string | null;
+          round_type?: string | null;
+          runway_months?: number | null;
+          startup_id?: string;
+          target_raise?: number | null;
+          updated_at?: string;
+          use_of_funds?: string | null;
+          valuation?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'investor_readiness_profiles_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: true;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_profiles_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: true;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      investor_readiness_requirements: {
+        Row: {
+          allows_not_applicable: boolean;
+          completed_at: string | null;
+          created_at: string;
+          description: string | null;
+          id: string;
+          input_kind: string;
+          linked_existing_evidence_id: string | null;
+          linked_metric_id: string | null;
+          linked_team_member_id: string | null;
+          not_applicable: boolean;
+          not_applicable_reason: string | null;
+          required: boolean;
+          requirement_key: string;
+          section: Database['public']['Enums']['readiness_section'];
+          sort_order: number;
+          startup_id: string;
+          status: Database['public']['Enums']['requirement_status'];
+          text_value: string | null;
+          title: string;
+          updated_at: string;
+          url: string | null;
+        };
+        Insert: {
+          allows_not_applicable?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          input_kind: string;
+          linked_existing_evidence_id?: string | null;
+          linked_metric_id?: string | null;
+          linked_team_member_id?: string | null;
+          not_applicable?: boolean;
+          not_applicable_reason?: string | null;
+          required?: boolean;
+          requirement_key: string;
+          section: Database['public']['Enums']['readiness_section'];
+          sort_order?: number;
+          startup_id: string;
+          status?: Database['public']['Enums']['requirement_status'];
+          text_value?: string | null;
+          title: string;
+          updated_at?: string;
+          url?: string | null;
+        };
+        Update: {
+          allows_not_applicable?: boolean;
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          input_kind?: string;
+          linked_existing_evidence_id?: string | null;
+          linked_metric_id?: string | null;
+          linked_team_member_id?: string | null;
+          not_applicable?: boolean;
+          not_applicable_reason?: string | null;
+          required?: boolean;
+          requirement_key?: string;
+          section?: Database['public']['Enums']['readiness_section'];
+          sort_order?: number;
+          startup_id?: string;
+          status?: Database['public']['Enums']['requirement_status'];
+          text_value?: string | null;
+          title?: string;
+          updated_at?: string;
+          url?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'investor_readiness_requirement_linked_existing_evidence_id_fkey';
+            columns: ['linked_existing_evidence_id'];
+            isOneToOne: false;
+            referencedRelation: 'stage_evidence';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_requirements_linked_metric_id_fkey';
+            columns: ['linked_metric_id'];
+            isOneToOne: false;
+            referencedRelation: 'traction_metrics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_requirements_linked_team_member_id_fkey';
+            columns: ['linked_team_member_id'];
+            isOneToOne: false;
+            referencedRelation: 'team_members';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_requirements_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'investor_readiness_requirements_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: false;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       meeting_requests: {
         Row: {
           admin_response: string | null;
@@ -343,6 +587,67 @@ export type Database = {
         };
         Relationships: [];
       };
+      readiness_interviews: {
+        Row: {
+          admin_note: string | null;
+          completed_at: string | null;
+          created_at: string;
+          id: string;
+          location_or_link: string | null;
+          scheduled_at: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['interview_status'];
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          admin_note?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          location_or_link?: string | null;
+          scheduled_at?: string | null;
+          startup_id: string;
+          status?: Database['public']['Enums']['interview_status'];
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          admin_note?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          location_or_link?: string | null;
+          scheduled_at?: string | null;
+          startup_id?: string;
+          status?: Database['public']['Enums']['interview_status'];
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'readiness_interviews_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: true;
+            referencedRelation: 'startup_activity';
+            referencedColumns: ['startup_id'];
+          },
+          {
+            foreignKeyName: 'readiness_interviews_startup_id_fkey';
+            columns: ['startup_id'];
+            isOneToOne: true;
+            referencedRelation: 'startups';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'readiness_interviews_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       stage_evidence: {
         Row: {
           created_at: string;
@@ -352,6 +657,7 @@ export type Database = {
           id: string;
           label: string;
           linked_metric_id: string | null;
+          readiness_requirement_id: string | null;
           requirement_id: string | null;
           stage: Database['public']['Enums']['startup_stage'];
           startup_id: string;
@@ -367,6 +673,7 @@ export type Database = {
           id?: string;
           label: string;
           linked_metric_id?: string | null;
+          readiness_requirement_id?: string | null;
           requirement_id?: string | null;
           stage: Database['public']['Enums']['startup_stage'];
           startup_id: string;
@@ -382,6 +689,7 @@ export type Database = {
           id?: string;
           label?: string;
           linked_metric_id?: string | null;
+          readiness_requirement_id?: string | null;
           requirement_id?: string | null;
           stage?: Database['public']['Enums']['startup_stage'];
           startup_id?: string;
@@ -402,6 +710,13 @@ export type Database = {
             columns: ['linked_metric_id'];
             isOneToOne: false;
             referencedRelation: 'traction_metrics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stage_evidence_readiness_requirement_id_fkey';
+            columns: ['readiness_requirement_id'];
+            isOneToOne: false;
+            referencedRelation: 'investor_readiness_requirements';
             referencedColumns: ['id'];
           },
           {
@@ -438,6 +753,7 @@ export type Database = {
         Row: {
           admin_note: string | null;
           attention_requirement_ids: string[];
+          attention_sections: Database['public']['Enums']['readiness_section'][];
           created_at: string;
           feedback: string | null;
           from_stage: Database['public']['Enums']['startup_stage'];
@@ -446,6 +762,7 @@ export type Database = {
           requested_by: string | null;
           requirements_completed: number;
           requirements_total: number;
+          review_type: Database['public']['Enums']['review_type'];
           reviewed_at: string | null;
           reviewed_by: string | null;
           reviewer_name: string | null;
@@ -456,6 +773,7 @@ export type Database = {
         Insert: {
           admin_note?: string | null;
           attention_requirement_ids?: string[];
+          attention_sections?: Database['public']['Enums']['readiness_section'][];
           created_at?: string;
           feedback?: string | null;
           from_stage: Database['public']['Enums']['startup_stage'];
@@ -464,6 +782,7 @@ export type Database = {
           requested_by?: string | null;
           requirements_completed?: number;
           requirements_total?: number;
+          review_type?: Database['public']['Enums']['review_type'];
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           reviewer_name?: string | null;
@@ -474,6 +793,7 @@ export type Database = {
         Update: {
           admin_note?: string | null;
           attention_requirement_ids?: string[];
+          attention_sections?: Database['public']['Enums']['readiness_section'][];
           created_at?: string;
           feedback?: string | null;
           from_stage?: Database['public']['Enums']['startup_stage'];
@@ -482,6 +802,7 @@ export type Database = {
           requested_by?: string | null;
           requirements_completed?: number;
           requirements_total?: number;
+          review_type?: Database['public']['Enums']['review_type'];
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           reviewer_name?: string | null;
@@ -766,31 +1087,37 @@ export type Database = {
       };
       team_members: {
         Row: {
+          commitment: Database['public']['Enums']['team_commitment'] | null;
           created_at: string;
           email: string | null;
           id: string;
           linkedin_url: string | null;
           name: string;
+          relevant_experience: string | null;
           role: string | null;
           startup_id: string;
           updated_at: string;
         };
         Insert: {
+          commitment?: Database['public']['Enums']['team_commitment'] | null;
           created_at?: string;
           email?: string | null;
           id?: string;
           linkedin_url?: string | null;
           name: string;
+          relevant_experience?: string | null;
           role?: string | null;
           startup_id: string;
           updated_at?: string;
         };
         Update: {
+          commitment?: Database['public']['Enums']['team_commitment'] | null;
           created_at?: string;
           email?: string | null;
           id?: string;
           linkedin_url?: string | null;
           name?: string;
+          relevant_experience?: string | null;
           role?: string | null;
           startup_id?: string;
           updated_at?: string;
@@ -1022,6 +1349,35 @@ export type Database = {
           role: Database['public']['Enums']['app_role'];
         }[];
       };
+      admin_readiness_interview: {
+        Args: { p_startup_id: string };
+        Returns: {
+          admin_note: string | null;
+          completed_at: string | null;
+          created_at: string;
+          id: string;
+          location_or_link: string | null;
+          scheduled_at: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['interview_status'];
+          updated_at: string;
+          updated_by: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'readiness_interviews';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      admin_readiness_stats: {
+        Args: never;
+        Returns: {
+          investor_ready_startups: number;
+          pending_readiness_reviews: number;
+          startups_in_readiness: number;
+        }[];
+      };
       admin_review_queue: {
         Args: {
           p_limit?: number;
@@ -1030,6 +1386,7 @@ export type Database = {
           p_sort?: string;
           p_stage?: string;
           p_status?: string;
+          p_type?: string;
         };
         Returns: {
           current_stage: Database['public']['Enums']['startup_stage'];
@@ -1042,6 +1399,7 @@ export type Database = {
           requested_at: string;
           requirements_completed: number;
           requirements_total: number;
+          review_type: Database['public']['Enums']['review_type'];
           reviewed_at: string;
           reviewer_name: string;
           startup_id: string;
@@ -1058,6 +1416,33 @@ export type Database = {
           pending_reviews: number;
           waiting_over_3_days: number;
         }[];
+      };
+      admin_set_readiness_interview: {
+        Args: {
+          p_admin_note?: string;
+          p_location_or_link?: string;
+          p_scheduled_at?: string;
+          p_startup_id: string;
+          p_status: Database['public']['Enums']['interview_status'];
+        };
+        Returns: {
+          admin_note: string | null;
+          completed_at: string | null;
+          created_at: string;
+          id: string;
+          location_or_link: string | null;
+          scheduled_at: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['interview_status'];
+          updated_at: string;
+          updated_by: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'readiness_interviews';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       admin_stage_distribution: {
         Args: never;
@@ -1127,10 +1512,12 @@ export type Database = {
           p_feedback?: string;
           p_requirement_ids?: string[];
           p_review_id: string;
+          p_sections?: Database['public']['Enums']['readiness_section'][];
         };
         Returns: {
           admin_note: string | null;
           attention_requirement_ids: string[];
+          attention_sections: Database['public']['Enums']['readiness_section'][];
           created_at: string;
           feedback: string | null;
           from_stage: Database['public']['Enums']['startup_stage'];
@@ -1139,6 +1526,7 @@ export type Database = {
           requested_by: string | null;
           requirements_completed: number;
           requirements_total: number;
+          review_type: Database['public']['Enums']['review_type'];
           reviewed_at: string | null;
           reviewed_by: string | null;
           reviewer_name: string | null;
@@ -1178,6 +1566,22 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      investor_readiness_state: {
+        Args: { p_startup_id: string };
+        Returns: {
+          allows_not_applicable: boolean;
+          description: string;
+          input_kind: string;
+          is_complete: boolean;
+          not_applicable: boolean;
+          required: boolean;
+          requirement_id: string;
+          requirement_key: string;
+          section: Database['public']['Enums']['readiness_section'];
+          sort_order: number;
+          title: string;
+        }[];
       };
       promote_to_superadmin: {
         Args: { p_confirm_email: string; p_user_id: string };
@@ -1224,11 +1628,12 @@ export type Database = {
           isSetofReturn: true;
         };
       };
-      request_stage_review: {
+      request_investor_readiness_review: {
         Args: { p_startup_id: string };
         Returns: {
           admin_note: string | null;
           attention_requirement_ids: string[];
+          attention_sections: Database['public']['Enums']['readiness_section'][];
           created_at: string;
           feedback: string | null;
           from_stage: Database['public']['Enums']['startup_stage'];
@@ -1237,6 +1642,36 @@ export type Database = {
           requested_by: string | null;
           requirements_completed: number;
           requirements_total: number;
+          review_type: Database['public']['Enums']['review_type'];
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          reviewer_name: string | null;
+          startup_id: string;
+          status: Database['public']['Enums']['stage_review_status'];
+          to_stage: Database['public']['Enums']['startup_stage'];
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'stage_reviews';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      request_stage_review: {
+        Args: { p_startup_id: string };
+        Returns: {
+          admin_note: string | null;
+          attention_requirement_ids: string[];
+          attention_sections: Database['public']['Enums']['readiness_section'][];
+          created_at: string;
+          feedback: string | null;
+          from_stage: Database['public']['Enums']['startup_stage'];
+          id: string;
+          requested_at: string;
+          requested_by: string | null;
+          requirements_completed: number;
+          requirements_total: number;
+          review_type: Database['public']['Enums']['review_type'];
           reviewed_at: string | null;
           reviewed_by: string | null;
           reviewer_name: string | null;
@@ -1284,12 +1719,25 @@ export type Database = {
         | 'customer_feedback'
         | 'product_url'
         | 'text_note';
+      interview_status: 'not_required' | 'scheduled' | 'completed';
       meeting_request_status: 'requested' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
       metric_unit: 'number' | 'currency' | 'percent';
+      readiness_section:
+        | 'company'
+        | 'problem_market'
+        | 'product'
+        | 'traction'
+        | 'business_model'
+        | 'team'
+        | 'fundraising'
+        | 'legal_operations'
+        | 'investor_materials';
       requirement_status: 'not_started' | 'in_progress' | 'ready_for_review' | 'completed';
+      review_type: 'stage' | 'investor_readiness';
       stage_review_status: 'pending' | 'needs_work' | 'approved';
       startup_stage:
         'idea' | 'validation' | 'mvp' | 'traction' | 'investor_readiness' | 'investor_access';
+      team_commitment: 'full_time' | 'part_time';
       update_status: 'draft' | 'published';
     };
     CompositeTypes: {
@@ -1423,9 +1871,22 @@ export const Constants = {
         'product_url',
         'text_note',
       ],
+      interview_status: ['not_required', 'scheduled', 'completed'],
       meeting_request_status: ['requested', 'confirmed', 'completed', 'declined', 'cancelled'],
       metric_unit: ['number', 'currency', 'percent'],
+      readiness_section: [
+        'company',
+        'problem_market',
+        'product',
+        'traction',
+        'business_model',
+        'team',
+        'fundraising',
+        'legal_operations',
+        'investor_materials',
+      ],
       requirement_status: ['not_started', 'in_progress', 'ready_for_review', 'completed'],
+      review_type: ['stage', 'investor_readiness'],
       stage_review_status: ['pending', 'needs_work', 'approved'],
       startup_stage: [
         'idea',
@@ -1435,6 +1896,7 @@ export const Constants = {
         'investor_readiness',
         'investor_access',
       ],
+      team_commitment: ['full_time', 'part_time'],
       update_status: ['draft', 'published'],
     },
   },

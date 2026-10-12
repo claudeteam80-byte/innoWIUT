@@ -46,7 +46,7 @@ select tests.expect_error(
 );
 select tests.expect_error(
   format('select public.request_stage_review(%L)', :startup_k),
-  'P0001', 'traction cannot be reviewed while investor stages are locked'
+  'P0001', 'traction cannot be reviewed before its chosen traction requirements are complete'
 );
 rollback;
 

@@ -196,8 +196,8 @@ select tests.expect_error(
   '23514', 'evidence cannot target a locked stage'
 );
 select tests.expect_error(
-  format($$insert into public.startup_updates (startup_id, title, linked_stage) values (%L, 'X', 'investor_readiness')$$, :startup_j),
-  '23514', 'updates cannot link a locked stage'
+  format($$insert into public.startup_updates (startup_id, title, linked_stage) values (%L, 'X', 'investor_access')$$, :startup_j),
+  '23514', 'updates cannot link a locked stage (Investor Access)'
 );
 rollback;
 
