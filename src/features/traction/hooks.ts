@@ -27,6 +27,8 @@ export function useRefreshTraction(startupId: string) {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: founderKeys.metrics(startupId) }),
         queryClient.invalidateQueries({ queryKey: founderKeys.entries(startupId) }),
+        // Primary investor metrics read the live traction values.
+        queryClient.invalidateQueries({ queryKey: founderKeys.readiness(startupId) }),
       ]),
     [queryClient, startupId],
   );

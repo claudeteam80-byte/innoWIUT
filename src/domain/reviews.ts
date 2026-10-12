@@ -4,9 +4,8 @@
 // Stored review statuses are pending / needs_work / approved (public.stage_reviews).
 // not_ready and ready are derived from requirement progress. Only an approved review moves
 // a startup; nothing here changes a stage.
-import type { Tables } from '@/types/database';
+import type { Enums, Tables } from '@/types/database';
 import {
-  getStage,
   journeySummary,
   stageName,
   type StageEvidence,
@@ -16,6 +15,7 @@ import {
 } from './journey';
 
 export type StageReview = Tables<'stage_reviews'>;
+export type ReviewType = Enums<'review_type'>;
 export type ReviewState = 'not_ready' | 'ready' | 'pending' | 'needs_work' | 'approved';
 
 export const REVIEW_STATE_META: Record<ReviewState, { label: string; className: string }> = {
@@ -29,11 +29,25 @@ export const REVIEW_STATE_META: Record<ReviewState, { label: string; className: 
 /** How long the "Stage approved" state stays up after approval (if no new progress). */
 export const APPROVED_STATE_DAYS = 14;
 
-/** Next stage a review would move to, or null when it is locked (Traction). */
+/** Stage an approved review moves to. Investor Access is reached only via Investor Readiness. */
+const REVIEW_NEXT: Partial<Record<StageKey, StageKey>> = {
+  idea: 'validation',
+  validation: 'mvp',
+  mvp: 'traction',
+  traction: 'investor_readiness',
+  investor_readiness: 'investor_access',
+};
+
+/** Next stage a review would move to, or null when the stage cannot be reviewed. */
 export function nextReviewStage(stage: StageKey): StageKey | null {
-  const order: StageKey[] = ['idea', 'validation', 'mvp', 'traction'];
-  const next = order[order.indexOf(stage) + 1];
-  return next && !getStage(next).locked ? next : null;
+  return REVIEW_NEXT[stage] ?? null;
+}
+
+/** Founder- and admin-facing label of a review state; an approved readiness review is "Investor Ready". */
+export function reviewStateLabel(state: ReviewState, type: ReviewType = 'stage'): string {
+  return state === 'approved' && type === 'investor_readiness'
+    ? 'Investor Ready'
+    : REVIEW_STATE_META[state].label;
 }
 
 export const canRequestReview = (stage: StageKey) => nextReviewStage(stage) !== null;
@@ -75,6 +89,11 @@ export function stageReviewInfo(input: {
   progress: Pick<StageProgress, 'isComplete' | 'completed'>;
   /** Latest founder activity on this stage (requirement or evidence change), ISO time. */
   lastActivityAt?: string | null;
+  /**
+   * Keep the approval up while the founder has not acted since it (instead of while nothing
+   * is completed). Investor Readiness starts partly complete from existing startup data.
+   */
+  approvalUntilActivity?: boolean;
   now?: Date;
 }): StageReviewInfo {
   const { current, reviews, progress } = input;
@@ -95,7 +114,10 @@ export function stageReviewInfo(input: {
   const approval = reviewHistory(reviews).find(
     (r) => r.status === 'approved' && r.to_stage === current,
   );
-  if (approval?.reviewed_at && progress.completed === 0) {
+  const untouched = input.approvalUntilActivity
+    ? !input.lastActivityAt || (approval?.reviewed_at ?? '') >= input.lastActivityAt
+    : progress.completed === 0;
+  if (approval?.reviewed_at && untouched) {
     const ageDays = (now.getTime() - new Date(approval.reviewed_at).getTime()) / 86_400_000;
     if (ageDays <= APPROVED_STATE_DAYS) {
       return { state: 'approved', review: approval, nextStage, improvedSinceFeedback: false };

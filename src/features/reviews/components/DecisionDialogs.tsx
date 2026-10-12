@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { TextareaField } from '@/components/ui/Field';
 import { stageName, type StageRequirement } from '@/domain/journey';
+import type { ReadinessSection } from '@/domain/readiness';
 import type { StageReview } from '@/domain/reviews';
 import { adminKeys } from '@/features/admin/keys';
 import { founderKeys } from '@/features/founder-keys';
@@ -19,6 +20,7 @@ function useDecision(review: StageReview, onDone: () => void) {
       feedback?: string;
       adminNote?: string;
       requirementIds?: string[];
+      sections?: ReadinessSection[];
     }) => decideReview({ reviewId: review.id, ...input }),
     onSettled: () =>
       Promise.all([
@@ -28,13 +30,17 @@ function useDecision(review: StageReview, onDone: () => void) {
         queryClient.invalidateQueries({ queryKey: adminKeys.stageDistribution }),
         queryClient.invalidateQueries({ queryKey: adminKeys.startup(review.startup_id) }),
         queryClient.invalidateQueries({ queryKey: adminKeys.startupsAll }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.readinessStats }),
         queryClient.invalidateQueries({ queryKey: founderKeys.reviews(review.startup_id) }),
+        queryClient.invalidateQueries({ queryKey: founderKeys.readiness(review.startup_id) }),
       ]),
     onSuccess: (saved) => {
       toast.success(
-        saved.status === 'approved'
-          ? `Approved. The startup is now at ${stageName(saved.to_stage)}.`
-          : 'Sent back to the founder with your feedback.',
+        saved.status !== 'approved'
+          ? 'Sent back to the founder with your feedback.'
+          : saved.review_type === 'investor_readiness'
+            ? 'Marked Investor Ready. Investor Access is unlocked.'
+            : `Approved. The startup is now at ${stageName(saved.to_stage)}.`,
       );
       onDone();
     },
@@ -58,12 +64,17 @@ function ApproveForm({ open, onOpenChange, review, startupName }: DialogProps) {
   const decision = useDecision(review, () => onOpenChange(false));
   const from = stageName(review.from_stage);
   const to = stageName(review.to_stage);
+  const readiness = review.review_type === 'investor_readiness';
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => !decision.isPending && onOpenChange(next)}
-      title={`Approve ${from} stage?`}
-      description={`This will move ${startupName} from ${from} to ${to}.`}
+      title={readiness ? 'Mark Investor Ready?' : `Approve ${from} stage?`}
+      description={
+        readiness
+          ? `This confirms ${startupName} is Investor Ready and unlocks Investor Access. It cannot be undone.`
+          : `This will move ${startupName} from ${from} to ${to}.`
+      }
       footer={
         <>
           <Button
@@ -77,7 +88,7 @@ function ApproveForm({ open, onOpenChange, review, startupName }: DialogProps) {
             onClick={() => decision.mutate({ decision: 'approved', adminNote: note })}
             loading={decision.isPending}
           >
-            Approve &amp; Move to {to}
+            {readiness ? 'Mark Investor Ready' : <>Approve &amp; Move to {to}</>}
           </Button>
         </>
       }
@@ -94,9 +105,13 @@ function ApproveForm({ open, onOpenChange, review, startupName }: DialogProps) {
   );
 }
 
-export function NeedsWorkDialog(
-  props: DialogProps & { requirements: readonly StageRequirement[] },
-) {
+type NeedsWorkProps = DialogProps & {
+  requirements: readonly Pick<StageRequirement, 'id' | 'title'>[];
+  /** Investor Readiness: sections the admin can flag. */
+  sections?: readonly { key: ReadinessSection; name: string }[];
+};
+
+export function NeedsWorkDialog(props: NeedsWorkProps) {
   return props.open ? <NeedsWorkForm {...props} /> : null;
 }
 
@@ -105,9 +120,12 @@ function NeedsWorkForm({
   onOpenChange,
   review,
   requirements,
-}: DialogProps & { requirements: readonly StageRequirement[] }) {
+  sections = [],
+}: NeedsWorkProps) {
   const [feedback, setFeedback] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
+  const [flagged, setFlagged] = useState<ReadinessSection[]>([]);
+  const readiness = review.review_type === 'investor_readiness';
   const [error, setError] = useState<string | null>(null);
   const decision = useDecision(review, () => onOpenChange(false));
 
@@ -117,7 +135,12 @@ function NeedsWorkForm({
       return;
     }
     setError(null);
-    decision.mutate({ decision: 'needs_work', feedback, requirementIds: selected });
+    decision.mutate({
+      decision: 'needs_work',
+      feedback,
+      requirementIds: selected,
+      sections: readiness ? flagged : [],
+    });
   };
 
   return (
@@ -155,11 +178,44 @@ function NeedsWorkForm({
           required
           rows={4}
           maxLength={4000}
-          placeholder="e.g. You need stronger customer validation evidence before moving to MVP."
+          placeholder={
+            readiness
+              ? 'e.g. Add a financial model and a clearer use of funds before investor introductions.'
+              : 'e.g. You need stronger customer validation evidence before moving to MVP.'
+          }
           value={feedback}
           error={error ?? undefined}
           onChange={(event) => setFeedback(event.target.value)}
         />
+        {readiness && sections.length > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="text-[13px] font-medium text-ink">
+              Sections that need attention{' '}
+              <span className="font-normal text-muted">(optional)</span>
+            </legend>
+            <ul className="grid gap-1.5 sm:grid-cols-3">
+              {sections.map((section) => (
+                <li key={section.key}>
+                  <label className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg border border-line px-3 py-2 text-[13px] text-ink">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={flagged.includes(section.key)}
+                      onChange={() =>
+                        setFlagged((keys) =>
+                          keys.includes(section.key)
+                            ? keys.filter((key) => key !== section.key)
+                            : [...keys, section.key],
+                        )
+                      }
+                    />
+                    {section.name}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
         {requirements.length > 0 && (
           <fieldset className="space-y-2">
             <legend className="text-[13px] font-medium text-ink">

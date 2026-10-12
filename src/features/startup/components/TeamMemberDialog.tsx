@@ -4,7 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
+import { SelectField, TextareaField } from '@/components/ui/Field';
 import { TextField } from '@/components/ui/TextField';
+import { COMMITMENTS } from '@/domain/readiness';
 import { founderKeys } from '@/features/founder-keys';
 import { errorMessage } from '@/lib/errors';
 import { saveTeamMember, type TeamMember } from '../api';
@@ -28,6 +30,8 @@ function TeamMemberForm({ open, onOpenChange, startupId, member }: Props) {
     role: member?.role ?? '',
     email: member?.email ?? '',
     linkedin_url: member?.linkedin_url ?? '',
+    relevant_experience: member?.relevant_experience ?? '',
+    commitment: member?.commitment ?? '',
   };
   const {
     register,
@@ -38,7 +42,10 @@ function TeamMemberForm({ open, onOpenChange, startupId, member }: Props) {
   const mutation = useMutation({
     mutationFn: handleSubmitValues,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: founderKeys.team(startupId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: founderKeys.team(startupId) }),
+        queryClient.invalidateQueries({ queryKey: founderKeys.readiness(startupId) }),
+      ]);
       toast.success(member ? 'Team member updated.' : 'Team member added.');
       onOpenChange(false);
     },
@@ -103,6 +110,22 @@ function TeamMemberForm({ open, onOpenChange, startupId, member }: Props) {
           inputMode="url"
           error={errors.linkedin_url?.message}
           {...register('linkedin_url')}
+        />
+        <TextareaField
+          label="Relevant experience"
+          hint="Optional · used for Investor Readiness"
+          rows={3}
+          maxLength={1000}
+          error={errors.relevant_experience?.message}
+          {...register('relevant_experience')}
+        />
+        <SelectField
+          label="Commitment"
+          hint="Optional · used for Investor Readiness"
+          placeholder="Not set"
+          options={COMMITMENTS}
+          error={errors.commitment?.message}
+          {...register('commitment')}
         />
       </form>
     </Dialog>

@@ -61,6 +61,28 @@ const reviewApi = vi.hoisted(() => ({
   decideReview: vi.fn(),
 }));
 vi.mock('@/features/reviews/api', () => reviewApi);
+const readinessApi = vi.hoisted(() => ({
+  fetchReadinessStats: vi.fn(),
+  fetchReadinessState: vi.fn(),
+  fetchReadinessRequirements: vi.fn(),
+  fetchReadinessProfile: vi.fn(),
+  fetchReadinessMetrics: vi.fn(),
+  fetchInterview: vi.fn(),
+  fetchAdminInterview: vi.fn(),
+  setInterview: vi.fn(),
+  requestReadinessReview: vi.fn(),
+  updateReadinessRequirement: vi.fn(),
+  updateReadinessProfile: vi.fn(),
+  savePrimaryMetrics: vi.fn(),
+}));
+vi.mock('@/features/readiness/api', () => readinessApi);
+vi.mock('@/features/startup/api', () => ({
+  fetchTeam: async () => [],
+  fetchMyStartup: vi.fn(),
+  updateStartup: vi.fn(),
+  saveTeamMember: vi.fn(),
+  deleteTeamMember: vi.fn(),
+}));
 const tractionApi = vi.hoisted(() => ({ fetchMetrics: vi.fn(), fetchEntries: vi.fn() }));
 vi.mock('@/features/traction/api', () => tractionApi);
 vi.mock('@/features/updates/hooks', () => ({
@@ -158,6 +180,11 @@ beforeEach(() => {
   ]);
   tractionApi.fetchMetrics.mockResolvedValue([]);
   tractionApi.fetchEntries.mockResolvedValue([]);
+  readinessApi.fetchReadinessStats.mockResolvedValue({
+    startups_in_readiness: 2,
+    pending_readiness_reviews: 1,
+    investor_ready_startups: 0,
+  });
   journeyApi.fetchEvidence.mockResolvedValue([]);
   reviewApi.fetchStartupReviews.mockResolvedValue([]);
   reviewApi.fetchReviewStats.mockResolvedValue({ pending_reviews: 4, waiting_over_3_days: 2 });
@@ -255,7 +282,11 @@ describe('Stage Distribution', () => {
     expect(within(list).getByRole('link', { name: 'Validation: 1 startup' })).toBeInTheDocument();
     expect(within(list).getByRole('link', { name: 'MVP: 4 startups' })).toBeInTheDocument();
     expect(within(list).getByRole('link', { name: 'Traction: 2 startups' })).toBeInTheDocument();
-    expect(within(list).getAllByRole('link')).toHaveLength(4);
+    // V2.3: every stage, the investor stages included.
+    expect(within(list).getAllByRole('link')).toHaveLength(6);
+    expect(
+      within(list).getByRole('link', { name: 'Investor Readiness: 0 startups' }),
+    ).toHaveAttribute('href', '/admin/startups?stage=investor_readiness');
     expect(within(list).getByRole('link', { name: 'MVP: 4 startups' })).toHaveTextContent(
       '4 · 40%',
     );
@@ -350,8 +381,9 @@ describe('JourneyTab (admin, read-only)', () => {
     expect(
       screen.queryByRole('button', { name: /Update|Add Evidence|Remove|Select Metrics/ }),
     ).not.toBeInTheDocument();
-    // Locked stages are shown but not selectable.
-    expect(screen.queryByRole('button', { name: /Investor Readiness/ })).not.toBeInTheDocument();
+    // Investor Readiness is upcoming; Investor Access is locked and not selectable.
+    expect(screen.getByRole('button', { name: /^Investor Readiness — Upcoming/ })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Investor Access/ })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Investor Access — Locked')).toBeInTheDocument();
   });
 
@@ -750,9 +782,9 @@ describe('AdminReviewsPage', () => {
   it('defaults to pending reviews, oldest first, and shows the queue columns', async () => {
     reviewApi.fetchReviewQueue.mockResolvedValue({ rows: [queueRow()], total: 1 });
     renderAt(<AdminReviewsPage />, '/admin/reviews');
-    expect(screen.getByRole('heading', { name: 'Stage Reviews' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Reviews' })).toBeInTheDocument();
     expect(
-      screen.getByText('Review founder progress and approve stage transitions.'),
+      screen.getByText('Review founder progress, stage transitions and Investor Readiness.'),
     ).toBeInTheDocument();
     const table = await screen.findByRole('table', { name: 'Stage reviews' });
     expect(within(table).getByText('Gamma Labs')).toBeInTheDocument();
@@ -936,6 +968,7 @@ describe('AdminReviewDetailPage', () => {
         decision: 'needs_work',
         feedback: 'Add at least 3 more customer interview notes.',
         requirementIds: ['req-customer_interviews'],
+        sections: [],
       }),
     );
   });
@@ -990,5 +1023,201 @@ describe('JourneyTab review status (admin)', () => {
     const history = screen.getByRole('list', { name: 'Review history' });
     expect(within(history).getAllByText('Validation → MVP')).toHaveLength(2);
     expect(within(history).getByText(/Reviewed by Aziza Admin/)).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// V2.3 Investor Readiness (admin)
+// ---------------------------------------------------------------------------
+
+describe('Investor Readiness review (admin)', () => {
+  const sections = [
+    'company',
+    'problem_market',
+    'product',
+    'traction',
+    'business_model',
+    'team',
+    'fundraising',
+    'legal_operations',
+    'investor_materials',
+  ] as const;
+  const stateRows = sections.map((section, index) => ({
+    requirement_id: `rr-${section}`,
+    section,
+    requirement_key: `${section}_req`,
+    title: `${section} requirement`,
+    description: '',
+    required: true,
+    input_kind: 'text',
+    allows_not_applicable: false,
+    sort_order: index,
+    not_applicable: false,
+    is_complete: true,
+  }));
+
+  beforeEach(() => {
+    reviewApi.fetchReview.mockResolvedValue({
+      ...stageReview({
+        id: 'rev-r',
+        from_stage: 'investor_readiness',
+        to_stage: 'investor_access',
+        review_type: 'investor_readiness',
+        requirements_completed: 9,
+        requirements_total: 9,
+      }),
+      startup: {
+        id: 's',
+        name: 'Gamma Labs',
+        tagline: 'Adaptive learning',
+        logo_path: null,
+        journey_stage: 'investor_readiness',
+        owner: { id: 'f1', full_name: 'Dilnoza Yusupova', email: 'd@example.com' },
+      },
+    });
+    api.fetchStartup.mockResolvedValue({
+      id: 's',
+      name: 'Gamma Labs',
+      tagline: 'Adaptive learning',
+      industry: 'EdTech',
+      founded_year: 2024,
+      website: 'https://gamma.uz',
+      journey_stage: 'investor_readiness',
+      owner: { id: 'f1', full_name: 'Dilnoza Yusupova', email: 'd@example.com' },
+    });
+    api.fetchPublishedUpdates.mockResolvedValue([]);
+    api.fetchAssignments.mockResolvedValue([]);
+    api.fetchAdminNotes.mockResolvedValue([]);
+    journeyApi.fetchRequirements.mockResolvedValue([]);
+    journeyApi.fetchEvidence.mockResolvedValue([]);
+    reviewApi.fetchStartupReviews.mockResolvedValue([]);
+    readinessApi.fetchReadinessState.mockResolvedValue(stateRows);
+    readinessApi.fetchReadinessRequirements.mockResolvedValue([]);
+    readinessApi.fetchReadinessProfile.mockResolvedValue(null);
+    readinessApi.fetchReadinessMetrics.mockResolvedValue([]);
+    readinessApi.fetchInterview.mockResolvedValue(null);
+    readinessApi.fetchAdminInterview.mockResolvedValue(null);
+    reviewApi.decideReview.mockResolvedValue({ ...stageReview(), status: 'approved' });
+    readinessApi.setInterview.mockResolvedValue({});
+  });
+
+  it('shows the 13 review sections', async () => {
+    renderReview('rev-r');
+    expect(await screen.findByText('1. Startup summary')).toBeInTheDocument();
+    for (const title of [
+      '2. Company',
+      '3. Problem & Market',
+      '4. Product',
+      '5. Traction',
+      '6. Business Model',
+      '7. Team',
+      '8. Fundraising',
+      '9. Legal & Operations',
+      '10. Investor Materials',
+      '11. Founder updates',
+      '12. Mentor context',
+      '13. Interview status',
+    ]) {
+      expect(await screen.findByText(title)).toBeInTheDocument();
+    }
+    expect(screen.getByText('Investor Readiness review')).toBeInTheDocument();
+    // Read-only: no founder edit actions.
+    expect(screen.queryByRole('button', { name: /^Update / })).toBeNull();
+  });
+
+  it('marks Investor Ready only after a confirmation', async () => {
+    const user = userEvent.setup();
+    renderReview('rev-r');
+    await user.click(await screen.findByRole('button', { name: 'Mark Investor Ready' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Mark Investor Ready?' });
+    expect(reviewApi.decideReview).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Mark Investor Ready' }));
+    await vi.waitFor(() =>
+      expect(reviewApi.decideReview).toHaveBeenCalledWith(
+        expect.objectContaining({ reviewId: 'rev-r', decision: 'approved' }),
+      ),
+    );
+  });
+
+  it('needs work requires feedback and can flag sections', async () => {
+    const user = userEvent.setup();
+    renderReview('rev-r');
+    await user.click(await screen.findByRole('button', { name: 'Needs Work' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Send back to founder' });
+    await user.click(within(dialog).getByRole('button', { name: 'Send Back to Founder' }));
+    expect(
+      await within(dialog).findByText('Tell the founder what needs improvement.'),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByLabelText('Investor Materials'));
+    await user.type(within(dialog).getByLabelText(/What needs improvement/), 'Add a model.');
+    await user.click(within(dialog).getByRole('button', { name: 'Send Back to Founder' }));
+    await vi.waitFor(() =>
+      expect(reviewApi.decideReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          decision: 'needs_work',
+          feedback: 'Add a model.',
+          sections: ['investor_materials'],
+        }),
+      ),
+    );
+  });
+
+  it('schedules an optional interview with date, place and a private note', async () => {
+    const user = userEvent.setup();
+    renderReview('rev-r');
+    await user.click(await screen.findByRole('button', { name: /Schedule Interview/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Readiness interview' });
+    await user.click(within(dialog).getByRole('button', { name: 'Save Interview' }));
+    expect(await within(dialog).findByText('Choose the date and time.')).toBeInTheDocument();
+    expect(within(dialog).getByText('Add a place or a meeting link.')).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Date and time/), '2026-10-20T10:30');
+    await user.type(within(dialog).getByLabelText(/Location or meeting link/), 'Room 204');
+    await user.type(within(dialog).getByLabelText(/Admin note/), 'Ask about churn');
+    await user.click(within(dialog).getByRole('button', { name: 'Save Interview' }));
+    await vi.waitFor(() =>
+      expect(readinessApi.setInterview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startupId: 's',
+          status: 'scheduled',
+          locationOrLink: 'Room 204',
+          adminNote: 'Ask about churn',
+          scheduledAt: new Date('2026-10-20T10:30').toISOString(),
+        }),
+      ),
+    );
+  });
+
+  it('filters the review queue by review type', async () => {
+    const user = userEvent.setup();
+    reviewApi.fetchReviewQueue.mockResolvedValue({ rows: [], total: 0 });
+    renderAt(<AdminReviewsPage />, '/admin/reviews');
+    await screen.findByText('No reviews waiting');
+    await user.selectOptions(screen.getByLabelText('Review type'), 'investor_readiness');
+    await vi.waitFor(() =>
+      expect(reviewApi.fetchReviewQueue).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'investor_readiness' }),
+      ),
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent('type=investor_readiness');
+  });
+
+  it('shows readiness stats on the admin dashboard', async () => {
+    api.fetchDashboardStats.mockResolvedValue({
+      total_startups: 1,
+      active_startups: 0,
+      needs_update_startups: 0,
+      inactive_startups: 0,
+      updates_this_week: 0,
+      growing_startups: 0,
+      unassigned_startups: 0,
+      open_meeting_requests: 0,
+    });
+    renderAt(<AdminDashboardPage />);
+    const card = await screen.findByRole('region', { name: 'Investor Readiness' });
+    expect(
+      await within(card).findByRole('link', { name: /Startups in Investor Readiness\s*2/ }),
+    ).toHaveAttribute('href', '/admin/startups?stage=investor_readiness');
+    expect(within(card).getByRole('link', { name: /Pending Readiness Reviews\s*1/ })).toBeVisible();
+    expect(within(card).getByRole('link', { name: /Investor Ready Startups\s*0/ })).toBeVisible();
   });
 });

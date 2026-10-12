@@ -20,10 +20,15 @@ import { publicFileUrl } from '@/lib/storage';
 import { REVIEW_PAGE_SIZE, type ReviewQueueParams, type ReviewQueueRow } from '../api';
 import { ReviewStatusPill } from '../components/ReviewStatusPill';
 import { useReviewQueue } from '../hooks';
-import { queueParamsFromSearch, REVIEW_TABS, searchFromQueueParams } from '../queue-params';
+import {
+  queueParamsFromSearch,
+  REVIEW_TABS,
+  REVIEW_TYPES,
+  searchFromQueueParams,
+} from '../queue-params';
 
 const REVIEWABLE_STAGES = JOURNEY_STAGES.filter((s) =>
-  ['idea', 'validation', 'mvp'].includes(s.key),
+  ['idea', 'validation', 'mvp', 'traction', 'investor_readiness'].includes(s.key),
 );
 
 const waiting = (row: ReviewQueueRow) =>
@@ -44,7 +49,7 @@ export function AdminReviewsPage() {
     return () => window.clearTimeout(timer);
   });
 
-  const filtered = Boolean(params.search || params.stage);
+  const filtered = Boolean(params.search || params.stage || params.type);
   const rows = queue.data?.rows ?? [];
   const tabLabel = REVIEW_TABS.find((t) => t.value === params.tab)?.label ?? '';
 
@@ -52,8 +57,8 @@ export function AdminReviewsPage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="innoWIUT"
-        title="Stage Reviews"
-        subtitle="Review founder progress and approve stage transitions."
+        title="Reviews"
+        subtitle="Review founder progress, stage transitions and Investor Readiness."
       />
 
       <div className="overflow-x-auto">
@@ -67,7 +72,7 @@ export function AdminReviewsPage() {
 
       <section
         aria-label="Filters"
-        className="grid gap-3 rounded-xl border border-line bg-white p-4 shadow-card md:grid-cols-4"
+        className="grid gap-3 rounded-xl border border-line bg-white p-4 shadow-card md:grid-cols-2 xl:grid-cols-5"
       >
         <div className="relative md:col-span-2">
           <label htmlFor="review-search" className="mb-1.5 block text-[13px] font-medium text-ink">
@@ -86,6 +91,13 @@ export function AdminReviewsPage() {
             className={cn(inputClasses, 'pl-9')}
           />
         </div>
+        <SelectField
+          label="Review type"
+          value={params.type}
+          onChange={(e) => update({ type: e.target.value as ReviewQueueParams['type'] })}
+          placeholder="All types"
+          options={REVIEW_TYPES}
+        />
         <SelectField
           label="Stage"
           value={params.stage}
@@ -124,7 +136,7 @@ export function AdminReviewsPage() {
           }
           description={
             filtered
-              ? 'Try a different search or stage.'
+              ? 'Try a different search, type or stage.'
               : 'Founders request a stage review once every required milestone is complete.'
           }
           action={
@@ -133,7 +145,7 @@ export function AdminReviewsPage() {
                 variant="outline"
                 onClick={() => {
                   setSearchText('');
-                  update({ search: '', stage: '' });
+                  update({ search: '', stage: '', type: '' });
                 }}
               >
                 Clear filters
@@ -157,6 +169,19 @@ export function AdminReviewsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ReviewKind({ row }: { row: ReviewQueueRow }) {
+  return row.review_type === 'investor_readiness' ? (
+    <span>
+      Investor Readiness
+      <span className="block text-[11.5px] text-muted">Readiness review</span>
+    </span>
+  ) : (
+    <>
+      {stageName(row.from_stage)} → {stageName(row.to_stage)}
+    </>
   );
 }
 
@@ -216,7 +241,7 @@ function ReviewTable({ rows }: { rows: ReviewQueueRow[] }) {
                 <StartupCell row={row} />
               </td>
               <td className={cn(cell, 'text-ink')}>
-                {stageName(row.from_stage)} → {stageName(row.to_stage)}
+                <ReviewKind row={row} />
               </td>
               <td className={cn(cell, 'text-ink')}>
                 {row.requirements_completed}/{row.requirements_total}
@@ -234,7 +259,7 @@ function ReviewTable({ rows }: { rows: ReviewQueueRow[] }) {
                 {waiting(row)}
               </td>
               <td className={cell}>
-                <ReviewStatusPill state={row.status} />
+                <ReviewStatusPill state={row.status} type={row.review_type} />
               </td>
               <td className={cn(cell, 'text-right')}>
                 <Link
@@ -263,13 +288,13 @@ function ReviewCards({ rows }: { rows: ReviewQueueRow[] }) {
         <li key={row.id} className="rounded-xl border border-line bg-white p-4 shadow-card">
           <div className="flex items-start justify-between gap-3">
             <StartupCell row={row} />
-            <ReviewStatusPill state={row.status} />
+            <ReviewStatusPill state={row.status} type={row.review_type} />
           </div>
           <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[12.5px]">
             <div>
               <dt className="text-muted">Stage</dt>
               <dd className="text-ink">
-                {stageName(row.from_stage)} → {stageName(row.to_stage)}
+                <ReviewKind row={row} />
               </dd>
             </div>
             <div>

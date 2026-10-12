@@ -30,6 +30,8 @@ import { UpdateDialog } from '@/features/updates/components/UpdateDialog';
 import { useUpdateContext, useUpdates } from '@/features/updates/hooks';
 import { stageName } from '@/domain/journey';
 import { canRequestReview, journeyReviewSummary } from '@/domain/reviews';
+import { investorAccessSummary, readinessSummary } from '@/domain/readiness';
+import { useReadinessData } from '@/features/readiness/hooks';
 import {
   CurrentStageCard,
   NextBestActionCard,
@@ -52,6 +54,8 @@ export function DashboardPage() {
   const reviews = useStartupReviews(startupId);
   const evidence = useEvidence(startupId);
   const context = useUpdateContext(startupId);
+  const stage = startup.data?.journey_stage;
+  const readiness = useReadinessData(startupId, stage === 'investor_readiness');
   const [dialog, setDialog] = useState<'update' | 'traction' | 'metric' | null>(null);
 
   const name = firstName(profile?.full_name);
@@ -59,15 +63,28 @@ export function DashboardPage() {
   const latestPublished = (updates.data ?? []).find((u) => u.status === 'published') ?? null;
   // Deterministic: driven by the stage review state, then by incomplete requirements.
   const journey =
-    startup.data && requirements.data && metrics.data && reviews.data
-      ? journeyReviewSummary({
-          current: startup.data.journey_stage,
-          requirements: requirements.data,
-          metrics: metrics.data,
-          reviews: reviews.data,
-          evidence: evidence.data,
-        })
-      : null;
+    stage === 'investor_access' && reviews.data
+      ? investorAccessSummary(reviews.data)
+      : stage === 'investor_readiness'
+        ? readiness.data && reviews.data
+          ? readinessSummary({
+              rows: readiness.data.rows,
+              reviews: reviews.data,
+              requirements: readiness.data.requirements,
+              profile: readiness.data.profile,
+              evidence: evidence.data,
+              interview: readiness.data.interview,
+            })
+          : null
+        : startup.data && requirements.data && metrics.data && reviews.data
+          ? journeyReviewSummary({
+              current: startup.data.journey_stage,
+              requirements: requirements.data,
+              metrics: metrics.data,
+              reviews: reviews.data,
+              evidence: evidence.data,
+            })
+          : null;
   const continueJourney = (
     <Link to={paths.founder.journey} className={buttonClasses({ size: 'md' })}>
       Continue Journey <ArrowRight aria-hidden="true" />
@@ -112,14 +129,25 @@ export function DashboardPage() {
             <StartupSummary startup={startup.data} />
           )}
 
-          {requirements.isError || reviews.isError ? (
+          {requirements.isError || reviews.isError || readiness.failed ? (
             <ErrorState
               description="We couldn't load your journey."
-              onRetry={() => void Promise.all([requirements.refetch(), reviews.refetch()])}
+              onRetry={() =>
+                void Promise.all([
+                  requirements.refetch(),
+                  reviews.refetch(),
+                  readiness.failed?.refetch(),
+                ])
+              }
             />
           ) : journey ? (
             <CurrentStageCard
               summary={journey}
+              reviewType={
+                stage === 'investor_readiness' || stage === 'investor_access'
+                  ? 'investor_readiness'
+                  : 'stage'
+              }
               reviewState={
                 canRequestReview(journey.stage.key) || journey.review.state !== 'not_ready'
                   ? journey.review.state

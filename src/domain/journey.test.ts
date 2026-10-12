@@ -49,7 +49,7 @@ const templateRows = (stage: StageKey, overrides: Record<string, Partial<StageRe
   );
 
 describe('stages', () => {
-  it('has six stages with the two investor stages locked', () => {
+  it('has six stages with only Investor Access locked', () => {
     expect(JOURNEY_STAGES.map((s) => s.key)).toEqual([
       'idea',
       'validation',
@@ -58,10 +58,7 @@ describe('stages', () => {
       'investor_readiness',
       'investor_access',
     ]);
-    expect(JOURNEY_STAGES.filter((s) => s.locked).map((s) => s.key)).toEqual([
-      'investor_readiness',
-      'investor_access',
-    ]);
+    expect(JOURNEY_STAGES.filter((s) => s.locked).map((s) => s.key)).toEqual(['investor_access']);
   });
 
   it('matches the database templates (5 / 6 / 6, traction chosen by the founder)', () => {
@@ -81,12 +78,13 @@ describe('stages', () => {
     ]);
   });
 
-  it('positions stages around the current one and keeps investor stages locked', () => {
+  it('positions stages around the current one and keeps Investor Access locked', () => {
     expect(stagePosition('idea', 'mvp')).toBe('completed');
     expect(stagePosition('mvp', 'mvp')).toBe('current');
     expect(stagePosition('traction', 'mvp')).toBe('upcoming');
-    expect(stagePosition('investor_readiness', 'traction')).toBe('locked');
+    expect(stagePosition('investor_readiness', 'traction')).toBe('upcoming');
     expect(stagePosition('investor_access', 'idea')).toBe('locked');
+    expect(stagePosition('investor_access', 'investor_access')).toBe('current');
   });
 });
 
@@ -208,7 +206,6 @@ describe('nextAction (deterministic)', () => {
   });
 
   it('never offers actions for locked stages', () => {
-    expect(nextAction('investor_readiness', []).kind).toBe('locked');
     expect(nextAction('investor_access', []).kind).toBe('locked');
   });
 });

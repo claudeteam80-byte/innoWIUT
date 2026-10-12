@@ -90,7 +90,10 @@ function StartupForm({ startup }: { startup: Startup }) {
     // Only editable columns are sent; owner and onboarding fields are never touched.
     mutationFn: (values: Parameters<typeof updateStartup>[1]) => updateStartup(startup.id, values),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: founderKeys.startup(user?.id) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: founderKeys.startup(user?.id) }),
+        queryClient.invalidateQueries({ queryKey: founderKeys.readiness(startup.id) }),
+      ]);
       toast.success('Startup profile saved.');
     },
     onError: (error) => toast.error(errorMessage(error, "We couldn't save your startup profile.")),

@@ -42,6 +42,12 @@ export const teamMemberSchema = z.object({
     .refine((value) => !value || z.email().safeParse(value).success, 'Enter a valid email address.')
     .transform((value) => value.toLowerCase() || null),
   linkedin_url: optionalUrl('Enter a valid LinkedIn URL.'),
+  // Used by Investor Readiness (team experience & commitment). Optional everywhere.
+  relevant_experience: optionalText(1000).optional(),
+  commitment: z
+    .union([z.enum(['full_time', 'part_time']), z.literal('')])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : value || null)),
 });
 
 export type TeamMemberInput = z.input<typeof teamMemberSchema>;

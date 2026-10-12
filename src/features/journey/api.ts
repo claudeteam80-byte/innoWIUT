@@ -91,6 +91,7 @@ export type EvidenceInsert = Pick<
   | 'url'
   | 'file_path'
   | 'linked_metric_id'
+  | 'readiness_requirement_id'
 >;
 
 export async function addEvidence(startupId: string, rows: EvidenceInsert[]): Promise<void> {

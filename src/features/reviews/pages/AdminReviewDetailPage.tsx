@@ -24,6 +24,10 @@ import { useUpdateContext } from '@/features/updates/hooks';
 import { useDocumentTitle } from '@/lib/document-title';
 import { publicFileUrl } from '@/lib/storage';
 import { ApproveDialog, NeedsWorkDialog } from '../components/DecisionDialogs';
+import { READINESS_SECTIONS, sectionName } from '@/domain/readiness';
+import { InterviewAction } from '@/features/readiness/components/AdminReadinessPanel';
+import { ReadinessReviewDetail } from '@/features/readiness/components/ReadinessReviewDetail';
+import { useAdminInterview, useReadinessState } from '@/features/readiness/hooks';
 import { ReviewHistory } from '../components/ReviewHistory';
 import { ReviewStatusPill } from '../components/ReviewStatusPill';
 import { useReview, useStartupReviews } from '../hooks';
@@ -58,17 +62,18 @@ export function AdminReviewDetailPage() {
   const updates = usePublishedUpdates(startupId ?? '');
   const history = useStartupReviews(startupId);
   const context = useUpdateContext(startupId);
+  const isReadiness = review.data?.review_type === 'investor_readiness';
+  const readinessState = useReadinessState(startupId, isReadiness);
+  const interview = useAdminInterview(startupId, isReadiness);
   const [dialog, setDialog] = useState<'approve' | 'needs_work' | null>(null);
-  useDocumentTitle(
-    review.data?.startup?.name ? `Review · ${review.data.startup.name}` : 'Stage review',
-  );
+  useDocumentTitle(review.data?.startup?.name ? `Review · ${review.data.startup.name}` : 'Review');
 
   const back = (
     <Link
       to={paths.admin.reviews}
       className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted hover:text-ink"
     >
-      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Stage Reviews
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Reviews
     </Link>
   );
 
@@ -110,7 +115,12 @@ export function AdminReviewDetailPage() {
   const rows = requirements.data ?? [];
   const progress = stageProgress(data.from_stage, rows);
   const stageEvidence = (evidence.data ?? []).filter((e) => e.stage === data.from_stage);
-  const titles = Object.fromEntries(rows.map((r) => [r.id, r.title]));
+  const readinessRows = readinessState.data ?? [];
+  const titles = {
+    ...Object.fromEntries(readinessRows.map((r) => [r.requirement_id, r.title])),
+    ...Object.fromEntries(rows.map((r) => [r.id, r.title])),
+  };
+  const type = data.review_type;
   const published = (updates.data ?? []).filter((u) => u.status === 'published');
   const stageUpdates = published.filter((u) => u.linked_stage === data.from_stage);
   const planSource =
@@ -135,152 +145,166 @@ export function AdminReviewDetailPage() {
             </Link>
           </h1>
           <p className="mt-0.5 text-[14px] font-medium text-muted">
-            {from} → {to}
+            {isReadiness ? 'Investor Readiness review' : `${from} → ${to}`}
           </p>
         </div>
-        <ReviewStatusPill state={state} className="self-start sm:self-center" />
+        <ReviewStatusPill state={state} type={type} className="self-start sm:self-center" />
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Section number={1} title="Stage summary">
-            <InfoGrid
-              items={[
-                { label: 'Current stage', value: stageName(startup.journey_stage) },
-                { label: 'Reviewing', value: `${from} → ${to}` },
-                {
-                  label: 'Stage completion',
-                  value: `${progress.completed} of ${progress.total} required (${data.requirements_completed}/${data.requirements_total} when requested)`,
-                },
-                {
-                  label: 'Requested',
-                  value:
-                    state === 'pending'
-                      ? `${formatDate(data.requested_at, 'long')} · ${daysWaiting(data.requested_at)} days waiting`
-                      : formatDate(data.requested_at, 'long'),
-                },
-                {
-                  label: 'Founder',
-                  value: startup.owner
-                    ? `${startup.owner.full_name || '—'} · ${startup.owner.email}`
-                    : null,
-                  wide: true,
-                },
-              ]}
+          {isReadiness ? (
+            <ReadinessReviewDetail
+              review={data}
+              startupId={startup.id}
+              evidence={evidence.data ?? []}
+              metrics={metrics.data ?? []}
+              updates={updates.data ?? []}
+              updateContext={context}
+              interview={interview.data}
             />
-            <div className="mt-4">
-              <StageProgressBar percent={progress.percent} label={`${from} progress`} />
-            </div>
-          </Section>
+          ) : (
+            <>
+              <Section number={1} title="Stage summary">
+                <InfoGrid
+                  items={[
+                    { label: 'Current stage', value: stageName(startup.journey_stage) },
+                    { label: 'Reviewing', value: `${from} → ${to}` },
+                    {
+                      label: 'Stage completion',
+                      value: `${progress.completed} of ${progress.total} required (${data.requirements_completed}/${data.requirements_total} when requested)`,
+                    },
+                    {
+                      label: 'Requested',
+                      value:
+                        state === 'pending'
+                          ? `${formatDate(data.requested_at, 'long')} · ${daysWaiting(data.requested_at)} days waiting`
+                          : formatDate(data.requested_at, 'long'),
+                    },
+                    {
+                      label: 'Founder',
+                      value: startup.owner
+                        ? `${startup.owner.full_name || '—'} · ${startup.owner.email}`
+                        : null,
+                      wide: true,
+                    },
+                  ]}
+                />
+                <div className="mt-4">
+                  <StageProgressBar percent={progress.percent} label={`${from} progress`} />
+                </div>
+              </Section>
 
-          <Section
-            number={2}
-            title="Requirements"
-            description={`What innoWIUT looks for at ${from}.`}
-          >
-            {requirements.isError ? (
-              <ErrorState onRetry={() => void requirements.refetch()} />
-            ) : requirements.isPending ? (
-              <Skeleton className="h-32 w-full" />
-            ) : progress.rows.length === 0 ? (
-              <p className="text-[13px] text-muted">No requirements for this stage.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {progress.rows.map((row) => {
-                  const count = evidenceFor(row.id, evidence.data ?? []).length;
-                  return (
-                    <li
-                      key={row.id}
-                      className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-medium text-ink">{row.title}</p>
-                        <p className="text-[12px] text-muted">
-                          {count} evidence {count === 1 ? 'item' : 'items'} · Last updated{' '}
-                          {formatDate(row.updated_at)}
-                          {row.progress_target !== null &&
-                            ` · ${row.progress_value ?? 0}/${row.progress_target}`}
-                        </p>
-                      </div>
-                      <StatusBadge status={row.status} />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </Section>
+              <Section
+                number={2}
+                title="Requirements"
+                description={`What innoWIUT looks for at ${from}.`}
+              >
+                {requirements.isError ? (
+                  <ErrorState onRetry={() => void requirements.refetch()} />
+                ) : requirements.isPending ? (
+                  <Skeleton className="h-32 w-full" />
+                ) : progress.rows.length === 0 ? (
+                  <p className="text-[13px] text-muted">No requirements for this stage.</p>
+                ) : (
+                  <ul className="divide-y divide-line">
+                    {progress.rows.map((row) => {
+                      const count = evidenceFor(row.id, evidence.data ?? []).length;
+                      return (
+                        <li
+                          key={row.id}
+                          className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[13.5px] font-medium text-ink">{row.title}</p>
+                            <p className="text-[12px] text-muted">
+                              {count} evidence {count === 1 ? 'item' : 'items'} · Last updated{' '}
+                              {formatDate(row.updated_at)}
+                              {row.progress_target !== null &&
+                                ` · ${row.progress_value ?? 0}/${row.progress_target}`}
+                            </p>
+                          </div>
+                          <StatusBadge status={row.status} />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </Section>
 
-          <Section
-            number={3}
-            title={`Evidence (${stageEvidence.length})`}
-            description="Added by the founder. Read-only."
-          >
-            {stageEvidence.length === 0 ? (
-              <EmptyState icon={Paperclip} title="No evidence for this stage." />
-            ) : (
-              <EvidenceList
-                items={stageEvidence}
-                metrics={metrics.data}
-                requirementTitles={titles}
-              />
-            )}
-          </Section>
+              <Section
+                number={3}
+                title={`Evidence (${stageEvidence.length})`}
+                description="Added by the founder. Read-only."
+              >
+                {stageEvidence.length === 0 ? (
+                  <EmptyState icon={Paperclip} title="No evidence for this stage." />
+                ) : (
+                  <EvidenceList
+                    items={stageEvidence}
+                    metrics={metrics.data}
+                    requirementTitles={titles}
+                  />
+                )}
+              </Section>
 
-          <section aria-labelledby="review-traction" className="space-y-3">
-            <h2 id="review-traction" className="text-[15px] font-semibold text-ink">
-              4. Traction
-            </h2>
-            <TractionTab startupId={startup.id} />
-          </section>
+              <section aria-labelledby="review-traction" className="space-y-3">
+                <h2 id="review-traction" className="text-[15px] font-semibold text-ink">
+                  4. Traction
+                </h2>
+                <TractionTab startupId={startup.id} />
+              </section>
 
-          <Section
-            number={5}
-            title="Recent founder updates"
-            description={`Published updates linked to ${from}.`}
-          >
-            {updates.isPending ? (
-              <Skeleton className="h-24 w-full" />
-            ) : stageUpdates.length === 0 ? (
-              <EmptyState icon={FileText} title="No updates linked to this stage." />
-            ) : (
-              <div className="space-y-4">
-                {stageUpdates.slice(0, 3).map((update) => (
-                  <UpdateCard key={update.id} update={update} context={context} />
-                ))}
-              </div>
-            )}
-          </Section>
+              <Section
+                number={5}
+                title="Recent founder updates"
+                description={`Published updates linked to ${from}.`}
+              >
+                {updates.isPending ? (
+                  <Skeleton className="h-24 w-full" />
+                ) : stageUpdates.length === 0 ? (
+                  <EmptyState icon={FileText} title="No updates linked to this stage." />
+                ) : (
+                  <div className="space-y-4">
+                    {stageUpdates.slice(0, 3).map((update) => (
+                      <UpdateCard key={update.id} update={update} context={context} />
+                    ))}
+                  </div>
+                )}
+              </Section>
 
-          <Section
-            number={6}
-            title="Blockers & next milestone"
-            description={
-              planSource
-                ? `From “${planSource.title}” (${formatDate(planSource.update_date)}).`
-                : undefined
-            }
-          >
-            {planSource ? (
-              <InfoGrid
-                items={[
-                  {
-                    label: 'Blocker',
-                    value: planSource.blocker ?? planSource.challenge ?? 'None reported',
-                  },
-                  {
-                    label: 'Next milestone',
-                    value: planSource.next_milestone
-                      ? `${planSource.next_milestone}${planSource.next_milestone_date ? ` (target ${formatDate(planSource.next_milestone_date)})` : ''}`
-                      : planSource.next_steps,
-                  },
-                ]}
-              />
-            ) : (
-              <p className="text-[13px] text-muted">
-                No blocker or milestone reported in published updates.
-              </p>
-            )}
-          </Section>
+              <Section
+                number={6}
+                title="Blockers & next milestone"
+                description={
+                  planSource
+                    ? `From “${planSource.title}” (${formatDate(planSource.update_date)}).`
+                    : undefined
+                }
+              >
+                {planSource ? (
+                  <InfoGrid
+                    items={[
+                      {
+                        label: 'Blocker',
+                        value: planSource.blocker ?? planSource.challenge ?? 'None reported',
+                      },
+                      {
+                        label: 'Next milestone',
+                        value: planSource.next_milestone
+                          ? `${planSource.next_milestone}${planSource.next_milestone_date ? ` (target ${formatDate(planSource.next_milestone_date)})` : ''}`
+                          : planSource.next_steps,
+                      },
+                    ]}
+                  />
+                ) : (
+                  <p className="text-[13px] text-muted">
+                    No blocker or milestone reported in published updates.
+                  </p>
+                )}
+              </Section>
+            </>
+          )}
 
           {otherReviews.length > 0 && (
             <Card>
@@ -301,20 +325,36 @@ export function AdminReviewDetailPage() {
               <>
                 <CardHeader
                   title="Decision"
-                  description={`Approving moves ${startup.name} from ${from} to ${to}. Needs work keeps it at ${from}.`}
+                  description={
+                    isReadiness
+                      ? `Marking ${startup.name} Investor Ready unlocks Investor Access. Needs work keeps it in Investor Readiness.`
+                      : `Approving moves ${startup.name} from ${from} to ${to}. Needs work keeps it at ${from}.`
+                  }
                 />
                 <div className="grid gap-2">
-                  <Button onClick={() => setDialog('approve')}>Approve Stage</Button>
+                  <Button onClick={() => setDialog('approve')}>
+                    {isReadiness ? 'Mark Investor Ready' : 'Approve Stage'}
+                  </Button>
                   <Button variant="outline" onClick={() => setDialog('needs_work')}>
                     Needs Work
                   </Button>
+                  {isReadiness &&
+                    startup.journey_stage === 'investor_readiness' &&
+                    interview.data !== undefined && (
+                      <InterviewAction
+                        startupId={startup.id}
+                        startupName={startup.name}
+                        interview={interview.data}
+                        size="md"
+                      />
+                    )}
                 </div>
               </>
             ) : (
               <>
                 <CardHeader title="Decision" />
                 <div className="space-y-3 text-[13px]">
-                  <ReviewStatusPill state={state} />
+                  <ReviewStatusPill state={state} type={type} />
                   <p className="text-muted">
                     {formatDate(data.reviewed_at, 'long')} by{' '}
                     {data.reviewer_name || 'innoWIUT admin'}
@@ -325,6 +365,21 @@ export function AdminReviewDetailPage() {
                     </p>
                   )}
                   {data.admin_note && <p className="text-ink">Note: {data.admin_note}</p>}
+                  {data.attention_sections.length > 0 && (
+                    <p className="text-muted">
+                      Sections: {data.attention_sections.map(sectionName).join(', ')}
+                    </p>
+                  )}
+                  {isReadiness &&
+                    state === 'needs_work' &&
+                    startup.journey_stage === 'investor_readiness' &&
+                    interview.data !== undefined && (
+                      <InterviewAction
+                        startupId={startup.id}
+                        startupName={startup.name}
+                        interview={interview.data}
+                      />
+                    )}
                   {data.attention_requirement_ids.length > 0 && (
                     <p className="text-muted">
                       Needs attention:{' '}
@@ -352,7 +407,12 @@ export function AdminReviewDetailPage() {
         onOpenChange={(open) => !open && setDialog(null)}
         review={data}
         startupName={startup.name}
-        requirements={progress.rows}
+        requirements={
+          isReadiness
+            ? readinessRows.map((r) => ({ id: r.requirement_id, title: r.title }))
+            : progress.rows
+        }
+        sections={isReadiness ? READINESS_SECTIONS : []}
       />
     </div>
   );

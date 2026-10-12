@@ -198,7 +198,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     number: '05',
     name: 'Investor Readiness',
     purpose: 'Prepare the story, numbers and materials.',
-    locked: true,
+    locked: false,
     flexible: false,
     requirements: [],
   },
@@ -207,6 +207,7 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     number: '06',
     name: 'Investor Access',
     purpose: 'Meet the right investors at the right time.',
+    // Unlocked only by an approved Investor Readiness review (it is then the current stage).
     locked: true,
     flexible: false,
     requirements: [],
@@ -227,7 +228,13 @@ export const TRACTION_OPTIONS: TractionOption[] = [
   { key: 'waitlist', title: 'Waitlist', metricNames: ['waitlist'] },
 ];
 
-export const OPEN_STAGE_KEYS = ['idea', 'validation', 'mvp', 'traction'] as const;
+export const OPEN_STAGE_KEYS = [
+  'idea',
+  'validation',
+  'mvp',
+  'traction',
+  'investor_readiness',
+] as const;
 export type OpenStageKey = (typeof OPEN_STAGE_KEYS)[number];
 
 export const REQUIREMENT_STATUSES: {
@@ -283,6 +290,7 @@ export type StagePosition = 'completed' | 'current' | 'upcoming' | 'locked';
 /** Where a stage sits relative to the startup's current stage (position only, no review). */
 export function stagePosition(key: StageKey, current: StageKey): StagePosition {
   const stage = getStage(key);
+  if (key === current) return 'current';
   if (stage.locked) return 'locked';
   const index = JOURNEY_STAGES.indexOf(stage);
   const currentIndex = JOURNEY_STAGES.indexOf(getStage(current));
@@ -351,7 +359,8 @@ export type NextActionKind =
   | 'record_metric'
   | 'reach_target'
   | 'complete_requirement'
-  | 'stage_complete';
+  | 'stage_complete'
+  | 'readiness';
 
 export interface NextAction {
   kind: NextActionKind;

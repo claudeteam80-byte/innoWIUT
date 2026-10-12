@@ -21,13 +21,25 @@ import { useEvidence, useRequirements } from '@/features/journey/hooks';
 import { useMetrics } from '@/features/traction/hooks';
 import { UpdateCard } from '@/features/updates/components/UpdateCard';
 import { useUpdateContext } from '@/features/updates/hooks';
-import { usePublishedUpdates } from '../hooks';
+import { investorAccessSummary, readinessCompletion, readinessSummary } from '@/domain/readiness';
+import { AdminReadinessPanel } from '@/features/readiness/components/AdminReadinessPanel';
+import { ReadinessSections } from '@/features/readiness/components/ReadinessSections';
+import { useReadinessData } from '@/features/readiness/hooks';
+import { useAdminStartup, usePublishedUpdates } from '../hooks';
 
 /**
  * Read-only view of a founder's journey. Admins see requirements, evidence (not evidence on
  * unpublished drafts — RLS) and published stage-linked updates. Nothing here writes.
  */
-export function JourneyTab({ startupId, current }: { startupId: string; current: StageKey }) {
+export function JourneyTab({
+  startupId,
+  startupName = 'This startup',
+  current,
+}: {
+  startupId: string;
+  startupName?: string;
+  current: StageKey;
+}) {
   const requirements = useRequirements(startupId);
   const evidence = useEvidence(startupId);
   const metrics = useMetrics(startupId);
@@ -35,10 +47,20 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
   const context = useUpdateContext(startupId);
   const reviews = useStartupReviews(startupId);
   const [selected, setSelected] = useState<StageKey>(current);
+  const investorStage = current === 'investor_readiness' || current === 'investor_access';
+  const readiness = useReadinessData(startupId, investorStage);
+  const startup = useAdminStartup(startupId);
 
-  const failed = [requirements, evidence, metrics, reviews].find((q) => q.isError);
+  const failed =
+    [requirements, evidence, metrics, reviews].find((q) => q.isError) ?? readiness.failed;
   if (failed) return <ErrorState onRetry={() => void failed.refetch()} />;
-  if (!requirements.data || !evidence.data || !metrics.data || !reviews.data) {
+  if (
+    !requirements.data ||
+    !evidence.data ||
+    !metrics.data ||
+    !reviews.data ||
+    (investorStage && !readiness.data)
+  ) {
     return (
       <div className="space-y-4" aria-busy="true" aria-label="Loading journey">
         <Skeleton className="h-44 w-full rounded-xl" />
@@ -48,13 +70,26 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
   }
 
   const rows = requirements.data;
-  const summary = journeyReviewSummary({
-    current,
-    requirements: rows,
-    metrics: metrics.data,
-    reviews: reviews.data,
-    evidence: evidence.data,
-  });
+  const ready = readiness.data;
+  const summary =
+    current === 'investor_access'
+      ? investorAccessSummary(reviews.data)
+      : current === 'investor_readiness' && ready
+        ? readinessSummary({
+            rows: ready.rows,
+            reviews: reviews.data,
+            requirements: ready.requirements,
+            profile: ready.profile,
+            evidence: evidence.data,
+            interview: ready.interview,
+          })
+        : journeyReviewSummary({
+            current,
+            requirements: rows,
+            metrics: metrics.data,
+            reviews: reviews.data,
+            evidence: evidence.data,
+          });
   const reviewState = summary.review.state;
   const pending = reviews.data.find((r) => r.status === 'pending') ?? null;
   const latestFeedback =
@@ -64,7 +99,10 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
   const stage = getStage(selected);
   const progress = stageProgress(selected, rows);
   const stageEvidence = evidence.data.filter((item) => item.stage === selected);
-  const titles = Object.fromEntries(rows.map((r) => [r.id, r.title]));
+  const titles = {
+    ...Object.fromEntries((ready?.rows ?? []).map((r) => [r.requirement_id, r.title])),
+    ...Object.fromEntries(rows.map((r) => [r.id, r.title])),
+  };
   const stageUpdates = (updates.data ?? []).filter(
     (u) => u.status === 'published' && u.linked_stage === selected,
   );
@@ -74,44 +112,54 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
     <div className="space-y-6">
       <CurrentStageCard
         summary={summary}
+        reviewType={investorStage ? 'investor_readiness' : 'stage'}
         reviewState={
           canRequestReview(current) || reviewState !== 'not_ready' ? reviewState : undefined
         }
       />
 
-      <Card>
-        <CardHeader
-          title="Stage review"
-          description="Only an approved review moves this startup to the next stage."
-          action={
-            pending ? (
-              <Link
-                to={paths.admin.reviewDetail(pending.id)}
-                className={buttonClasses({ size: 'sm' })}
-              >
-                Open Review
-              </Link>
-            ) : undefined
-          }
+      {investorStage ? (
+        <AdminReadinessPanel
+          startupId={startupId}
+          startupName={startupName}
+          current={current}
+          reviews={reviews.data}
         />
-        <div className="space-y-3 text-[13px]">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted">Review status</span>
-            <ReviewStatusPill state={reviewState} />
-            {pending && (
-              <span className="text-muted">Requested {formatDate(pending.requested_at)}</span>
+      ) : (
+        <Card>
+          <CardHeader
+            title="Stage review"
+            description="Only an approved review moves this startup to the next stage."
+            action={
+              pending ? (
+                <Link
+                  to={paths.admin.reviewDetail(pending.id)}
+                  className={buttonClasses({ size: 'sm' })}
+                >
+                  Open Review
+                </Link>
+              ) : undefined
+            }
+          />
+          <div className="space-y-3 text-[13px]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted">Review status</span>
+              <ReviewStatusPill state={reviewState} />
+              {pending && (
+                <span className="text-muted">Requested {formatDate(pending.requested_at)}</span>
+              )}
+            </div>
+            {latestFeedback && (
+              <div className="rounded-lg bg-canvas-subtle px-4 py-3">
+                <p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted uppercase">
+                  Latest review feedback · {formatDate(latestFeedback.reviewed_at)}
+                </p>
+                <p className="mt-1 leading-6 text-ink">“{latestFeedback.feedback}”</p>
+              </div>
             )}
           </div>
-          {latestFeedback && (
-            <div className="rounded-lg bg-canvas-subtle px-4 py-3">
-              <p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted uppercase">
-                Latest review feedback · {formatDate(latestFeedback.reviewed_at)}
-              </p>
-              <p className="mt-1 leading-6 text-ink">“{latestFeedback.feedback}”</p>
-            </div>
-          )}
-        </div>
-      </Card>
+        </Card>
+      )}
 
       <section aria-labelledby="admin-stages" className="space-y-3">
         <h2 id="admin-stages" className="text-[15px] font-semibold text-ink">
@@ -120,6 +168,7 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
         <StageTracker
           current={current}
           requirements={rows}
+          readinessProgress={ready ? readinessCompletion(ready.rows) : undefined}
           selected={selected}
           onSelect={setSelected}
         />
@@ -131,33 +180,50 @@ export function JourneyTab({ startupId, current }: { startupId: string; current:
         </p>
       )}
 
-      <Card>
-        <CardHeader
-          title={`Stage progress · ${stage.name}`}
-          description={progressText({ stage, ...progress })}
+      {selected === 'investor_readiness' && ready && startup.data ? (
+        <ReadinessSections
+          rows={ready.rows}
+          context={{
+            startup: startup.data,
+            profile: ready.profile,
+            requirements: ready.requirements,
+            evidence: evidence.data,
+            team: ready.team,
+            primaryMetricIds: ready.primaryMetricIds,
+          }}
+          metrics={metrics.data}
+          entries={ready.entries}
+          team={ready.team}
         />
-        <div className="mb-5">
-          <StageProgressBar percent={progress.percent} label={`${stage.name} progress`} />
-          {progress.isComplete && (
-            <p className="mt-2 text-[12.5px] font-medium text-success-strong">
-              Stage requirements completed — the startup stays at {getStage(current).name} until an
-              approved stage review.
+      ) : selected === 'investor_access' ? null : (
+        <Card>
+          <CardHeader
+            title={`Stage progress · ${stage.name}`}
+            description={progressText({ stage, ...progress })}
+          />
+          <div className="mb-5">
+            <StageProgressBar percent={progress.percent} label={`${stage.name} progress`} />
+            {progress.isComplete && (
+              <p className="mt-2 text-[12.5px] font-medium text-success-strong">
+                Stage requirements completed — the startup stays at {getStage(current).name} until
+                an approved stage review.
+              </p>
+            )}
+          </div>
+          <h3 className="mb-3 text-[10.5px] font-semibold tracking-[0.14em] text-muted uppercase">
+            Requirement status
+          </h3>
+          {progress.rows.length === 0 ? (
+            <p className="text-[13px] text-muted">
+              {stage.flexible
+                ? 'The founder has not chosen traction metrics yet.'
+                : 'No requirements for this stage.'}
             </p>
+          ) : (
+            <RequirementList rows={progress.rows} evidence={evidence.data} metrics={metrics.data} />
           )}
-        </div>
-        <h3 className="mb-3 text-[10.5px] font-semibold tracking-[0.14em] text-muted uppercase">
-          Requirement status
-        </h3>
-        {progress.rows.length === 0 ? (
-          <p className="text-[13px] text-muted">
-            {stage.flexible
-              ? 'The founder has not chosen traction metrics yet.'
-              : 'No requirements for this stage.'}
-          </p>
-        ) : (
-          <RequirementList rows={progress.rows} evidence={evidence.data} metrics={metrics.data} />
-        )}
-      </Card>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

@@ -39,6 +39,7 @@ vi.mock('@/features/startup/hooks', () => ({
     isError: false,
     refetch: vi.fn(),
   }),
+  useTeam: () => ({ data: [], isPending: false, isError: false }),
 }));
 vi.mock('@/features/traction/hooks', () => ({
   useMetrics: () => ({ data: state.metrics, isPending: false, isError: false }),
@@ -154,15 +155,18 @@ describe('JourneyPage', () => {
     expect(screen.getByText('No updates linked to this stage yet.')).toBeInTheDocument();
   });
 
-  it('shows the investor stages as locked and not selectable', async () => {
+  it('shows Investor Readiness as upcoming and Investor Access as locked', async () => {
     renderJourney();
     await screen.findByRole('list', { name: 'Journey stages' });
-    expect(screen.getByLabelText('Investor Readiness — Locked')).toBeInTheDocument();
     expect(screen.getByLabelText('Investor Access — Locked')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Investor/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Investor Access/ })).not.toBeInTheDocument();
     expect(
-      screen.getByText('Investor Readiness and Investor Access open in a later V2 phase.'),
+      screen.getByText('Investor Access opens after innoWIUT approves your Investor Readiness.'),
     ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Investor Readiness — Upcoming/ }));
+    expect(await screen.findByText('Investor Readiness is an upcoming stage')).toBeInTheDocument();
+    // Nothing can be entered before the stage is reached.
+    expect(screen.queryByRole('button', { name: /Request Investor Readiness/ })).toBeNull();
   });
 
   it('falls back to the current stage for a locked stage URL', async () => {

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { CheckCircle2, Compass } from 'lucide-react';
 import { progressText, type journeySummary } from '@/domain/journey';
-import type { ReviewState } from '@/domain/reviews';
+import type { ReviewState, ReviewType } from '@/domain/reviews';
 import { ReviewStatusPill } from '@/features/reviews/components/ReviewStatusPill';
 import { cn } from '@/lib/cn';
 
@@ -34,13 +34,17 @@ export function CurrentStageCard({
   action,
   className,
   reviewState,
+  reviewType = 'stage',
 }: {
   summary: Summary;
   action?: ReactNode;
   className?: string;
   /** Review status of the current stage (omitted where a stage cannot be reviewed). */
   reviewState?: ReviewState;
+  reviewType?: ReviewType;
 }) {
+  const access = summary.stage.key === 'investor_access';
+  const readiness = reviewType === 'investor_readiness' && !access;
   return (
     <section
       aria-labelledby="current-stage-title"
@@ -64,27 +68,43 @@ export function CurrentStageCard({
           <p className="mt-0.5 text-[13px] text-muted">{summary.stage.purpose}</p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
-          <p className="text-[22px] font-semibold text-primary" aria-hidden="true">
-            {summary.percent}%
-          </p>
-          {reviewState && <ReviewStatusPill state={reviewState} />}
-        </div>
-      </div>
-      <div className="mt-4 space-y-2">
-        <StageProgressBar percent={summary.percent} label={`${summary.stage.name} progress`} />
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
-          <span className="text-muted">{progressText(summary)}</span>
-          {summary.isComplete && (
-            <span className="inline-flex items-center gap-1 font-medium text-success-strong">
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Stage requirements
-              completed
-            </span>
+          {!access && (
+            <p className="text-[22px] font-semibold text-primary" aria-hidden="true">
+              {summary.percent}%{readiness && <span className="text-[13px]"> complete</span>}
+            </p>
           )}
+          {reviewState && <ReviewStatusPill state={reviewState} type={reviewType} />}
         </div>
       </div>
+      {access ? (
+        <p className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-success-strong">
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Investor Ready · Investor Access
+          unlocked
+        </p>
+      ) : (
+        <div className="mt-4 space-y-2">
+          <StageProgressBar
+            percent={summary.percent}
+            label={readiness ? 'Readiness completion' : `${summary.stage.name} progress`}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px]">
+            <span className="text-muted">
+              {readiness
+                ? `Readiness completion · ${summary.completed} of ${summary.total} mandatory requirements${summary.total > summary.completed ? ` · ${summary.total - summary.completed} missing` : ''}`
+                : progressText(summary)}
+            </span>
+            {summary.isComplete && (
+              <span className="inline-flex items-center gap-1 font-medium text-success-strong">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />{' '}
+                {readiness ? 'Readiness requirements completed' : 'Stage requirements completed'}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
       <div className="mt-4 rounded-lg bg-canvas-subtle px-4 py-3">
         <p className="text-[10.5px] font-semibold tracking-[0.14em] text-muted uppercase">
-          Next required action
+          {access ? 'Next' : 'Next required action'}
         </p>
         <p className="mt-1 text-[13.5px] leading-6 text-ink">{summary.next.title}</p>
       </div>
@@ -114,7 +134,12 @@ export function NextBestActionCard({ summary, action }: { summary: Summary; acti
             {summary.next.title}
           </p>
           <p className="mt-1 text-[12.5px] text-muted">
-            {summary.stage.name} stage · {progressText(summary)}
+            {summary.stage.name} ·{' '}
+            {summary.stage.key === 'investor_access'
+              ? 'Investor Ready'
+              : summary.stage.key === 'investor_readiness'
+                ? `${summary.percent}% complete · ${summary.total - summary.completed} missing`
+                : `stage · ${progressText(summary)}`}
           </p>
         </div>
       </div>

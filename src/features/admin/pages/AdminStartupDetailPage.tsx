@@ -134,7 +134,9 @@ export function AdminStartupDetailPage() {
       </div>
 
       {tab === 'overview' && <OverviewTab startup={data} lastActive={lastActive} />}
-      {tab === 'journey' && <JourneyTab startupId={data.id} current={data.journey_stage} />}
+      {tab === 'journey' && (
+        <JourneyTab startupId={data.id} startupName={data.name} current={data.journey_stage} />
+      )}
       {tab === 'traction' && <TractionTab startupId={data.id} />}
       {tab === 'updates' && <UpdatesTab startupId={data.id} />}
       {tab === 'team' && <TeamTab startup={data} />}

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/database';
+import type { ReadinessSection } from '@/domain/readiness';
 import type { StageReview } from '@/domain/reviews';
 
 type Functions = Database['public']['Functions'];
@@ -26,8 +27,11 @@ export async function requestStageReview(startupId: string): Promise<StageReview
 }
 
 export type ReviewTab = 'pending' | 'needs_work' | 'approved' | 'all';
+export type ReviewTypeFilter = '' | 'stage' | 'investor_readiness';
 export interface ReviewQueueParams {
   tab: ReviewTab;
+  /** '' = every review type. */
+  type: ReviewTypeFilter;
   stage: string;
   search: string;
   sort: 'oldest' | 'newest';
@@ -40,6 +44,7 @@ export function reviewQueueArgs(params: ReviewQueueParams) {
     // null (not undefined) means "all statuses"; undefined would fall back to 'pending'.
     p_status: (params.tab === 'all' ? null : params.tab) as string,
     p_stage: params.stage || undefined,
+    p_type: params.type || undefined,
     p_search: params.search.trim() || undefined,
     p_sort: params.sort,
     p_limit: REVIEW_PAGE_SIZE,
@@ -80,6 +85,8 @@ export async function decideReview(input: {
   feedback?: string | null;
   adminNote?: string | null;
   requirementIds?: string[];
+  /** Investor Readiness only: sections that need work. */
+  sections?: ReadinessSection[];
 }): Promise<StageReview> {
   const { data, error } = await supabase.rpc('decide_stage_review', {
     p_review_id: input.reviewId,
@@ -87,6 +94,7 @@ export async function decideReview(input: {
     p_feedback: input.feedback ?? undefined,
     p_admin_note: input.adminNote ?? undefined,
     p_requirement_ids: input.requirementIds ?? [],
+    p_sections: input.sections ?? [],
   });
   if (error) throw error;
   return data;

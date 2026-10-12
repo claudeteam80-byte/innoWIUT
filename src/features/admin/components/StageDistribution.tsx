@@ -7,7 +7,8 @@ import { formatNumber } from '@/domain/format';
 import { JOURNEY_STAGES } from '@/domain/journey';
 import { useStageDistribution } from '../hooks';
 
-const OPEN_STAGES = JOURNEY_STAGES.filter((stage) => !stage.locked);
+// Every stage, Investor Readiness and Investor Access included (V2.3).
+const OPEN_STAGES = JOURNEY_STAGES;
 
 /** Onboarded startups per journey stage (counted in Postgres). */
 export function StageDistribution() {
@@ -68,9 +69,6 @@ export function StageDistribution() {
           })}
         </ul>
       )}
-      <p className="mt-4 text-[12px] text-subtle">
-        Investor Readiness and Investor Access are locked in this version.
-      </p>
     </Card>
   );
 }

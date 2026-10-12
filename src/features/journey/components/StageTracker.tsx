@@ -18,12 +18,20 @@ const positionLabel = {
 interface StageTrackerProps {
   current: StageKey;
   requirements: readonly StageRequirement[];
+  /** Investor Readiness completion (it has no stage requirement rows). */
+  readinessProgress?: { completed: number; total: number; percent: number; isComplete: boolean };
   selected?: StageKey;
   onSelect?: (stage: StageKey) => void;
 }
 
-/** The six innoWIUT stages. Investor stages are shown but locked. */
-export function StageTracker({ current, requirements, selected, onSelect }: StageTrackerProps) {
+/** The six innoWIUT stages. Investor Access stays locked until it is reached. */
+export function StageTracker({
+  current,
+  requirements,
+  readinessProgress,
+  selected,
+  onSelect,
+}: StageTrackerProps) {
   return (
     <ol
       className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6"
@@ -31,7 +39,10 @@ export function StageTracker({ current, requirements, selected, onSelect }: Stag
     >
       {JOURNEY_STAGES.map((stage) => {
         const position = stagePosition(stage.key, current);
-        const progress = stageProgress(stage.key, requirements);
+        const progress =
+          stage.key === 'investor_readiness' && readinessProgress
+            ? readinessProgress
+            : stageProgress(stage.key, requirements);
         const isSelected = selected === stage.key;
         const content = (
           <>
@@ -63,7 +74,7 @@ export function StageTracker({ current, requirements, selected, onSelect }: Stag
             >
               {positionLabel[position]}
             </p>
-            {!stage.locked && (
+            {!stage.locked && stage.key !== 'investor_access' && (
               <div
                 className="mt-2.5 h-1 overflow-hidden rounded-full bg-primary-soft"
                 aria-hidden="true"
@@ -84,7 +95,7 @@ export function StageTracker({ current, requirements, selected, onSelect }: Stag
         );
         return (
           <li key={stage.key}>
-            {onSelect && !stage.locked ? (
+            {onSelect && (!stage.locked || position === 'current') ? (
               <button
                 type="button"
                 onClick={() => onSelect(stage.key)}

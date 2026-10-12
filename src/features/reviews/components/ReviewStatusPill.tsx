@@ -1,8 +1,24 @@
-import { REVIEW_STATE_META, type ReviewState } from '@/domain/reviews';
+import {
+  REVIEW_STATE_META,
+  reviewStateLabel,
+  type ReviewState,
+  type ReviewType,
+} from '@/domain/reviews';
 import { cn } from '@/lib/cn';
 
-/** Subtle status pill: Not Ready (gray), Ready (blue), Pending (amber), Needs Work, Approved. */
-export function ReviewStatusPill({ state, className }: { state: ReviewState; className?: string }) {
+/**
+ * Subtle status pill: Not Ready (gray), Ready (blue), Pending (amber), Needs Work, Approved.
+ * An approved Investor Readiness review reads "Investor Ready".
+ */
+export function ReviewStatusPill({
+  state,
+  type = 'stage',
+  className,
+}: {
+  state: ReviewState;
+  type?: ReviewType;
+  className?: string;
+}) {
   const meta = REVIEW_STATE_META[state];
   return (
     <span
@@ -12,7 +28,7 @@ export function ReviewStatusPill({ state, className }: { state: ReviewState; cla
         className,
       )}
     >
-      {meta.label}
+      {reviewStateLabel(state, type)}
     </span>
   );
 }

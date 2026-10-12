@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { History } from 'lucide-react';
 import { formatDate } from '@/domain/dates';
 import { stageName } from '@/domain/journey';
+import { sectionName } from '@/domain/readiness';
 import { reviewHistory, type StageReview } from '@/domain/reviews';
 import { ReviewStatusPill } from './ReviewStatusPill';
 
@@ -26,7 +27,7 @@ export function ReviewHistory({
     return (
       <p className="flex items-center gap-2 text-[13px] text-muted">
         <History className="h-4 w-4 text-subtle" aria-hidden="true" />
-        No stage reviews yet.
+        No reviews yet.
       </p>
     );
   }
@@ -38,7 +39,11 @@ export function ReviewHistory({
           .map((id) => requirementTitles?.[id])
           .filter(Boolean);
         const by = audience === 'admin' ? review.reviewer_name || 'innoWIUT admin' : 'innoWIUT';
-        const title = `${stageName(review.from_stage)} → ${stageName(review.to_stage)}`;
+        const title =
+          review.review_type === 'investor_readiness'
+            ? 'Investor Readiness review'
+            : `${stageName(review.from_stage)} → ${stageName(review.to_stage)}`;
+        const sections = review.attention_sections.map(sectionName);
         return (
           <li key={review.id} className="py-3 first:pt-0 last:pb-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -51,7 +56,7 @@ export function ReviewHistory({
                   title
                 )}
               </p>
-              <ReviewStatusPill state={review.status} />
+              <ReviewStatusPill state={review.status} type={review.review_type} />
             </div>
             <p className="mt-0.5 text-[12px] text-muted">
               {decided
@@ -65,6 +70,9 @@ export function ReviewHistory({
             )}
             {review.admin_note && (
               <p className="mt-1.5 text-[12.5px] text-muted">Note: {review.admin_note}</p>
+            )}
+            {sections.length > 0 && (
+              <p className="mt-1 text-[12px] text-muted">Sections: {sections.join(', ')}</p>
             )}
             {attention.length > 0 && (
               <p className="mt-1 text-[12px] text-muted">Needs attention: {attention.join(', ')}</p>

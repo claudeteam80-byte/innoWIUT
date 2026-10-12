@@ -18,4 +18,6 @@ export const adminKeys = {
   mentors: ['admin', 'mentors'] as const,
   meetings: (status: string, page: number) => ['admin', 'meetings', status, page] as const,
   meetingsAll: ['admin', 'meetings'] as const,
+  readinessStats: ['admin', 'readiness-stats'] as const,
+  interview: (startupId: string) => ['admin', 'interview', startupId] as const,
 };

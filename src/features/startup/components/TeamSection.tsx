@@ -24,7 +24,10 @@ export function TeamSection({ startupId }: { startupId: string }) {
   const remove = useMutation({
     mutationFn: (member: TeamMember) => deleteTeamMember(member.id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: founderKeys.team(startupId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: founderKeys.team(startupId) }),
+        queryClient.invalidateQueries({ queryKey: founderKeys.readiness(startupId) }),
+      ]);
       setDeleting(null);
       toast.success('Team member removed.');
     },

@@ -80,7 +80,7 @@ export function AdminStartupsPage() {
           value={params.stage}
           onChange={(e) => update({ stage: e.target.value })}
           placeholder="All stages"
-          options={JOURNEY_STAGES.filter((stage) => !stage.locked).map((stage) => ({
+          options={JOURNEY_STAGES.map((stage) => ({
             value: stage.key,
             label: stage.name,
           }))}

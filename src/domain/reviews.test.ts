@@ -39,12 +39,13 @@ const fresh = { isComplete: false, completed: 0 };
 const now = new Date('2026-10-12T12:00:00Z');
 
 describe('review stages', () => {
-  it('reviews move to the next open stage; traction stays locked', () => {
+  it('reviews move to the next stage; Investor Access is never reviewed', () => {
     expect(nextReviewStage('idea')).toBe('validation');
     expect(nextReviewStage('validation')).toBe('mvp');
     expect(nextReviewStage('mvp')).toBe('traction');
-    expect(nextReviewStage('traction')).toBeNull();
-    expect(canRequestReview('traction')).toBe(false);
+    expect(nextReviewStage('traction')).toBe('investor_readiness');
+    expect(canRequestReview('traction')).toBe(true);
+    expect(canRequestReview('investor_access')).toBe(false);
   });
 
   it('uses five subtle status pills', () => {
@@ -72,10 +73,10 @@ describe('stageReviewInfo', () => {
     expect(info).toMatchObject({ state: 'ready', nextStage: 'mvp' });
   });
 
-  it('a complete Traction stage is not reviewable yet', () => {
+  it('a complete Traction stage is ready for review (V2.3)', () => {
     expect(
-      stageReviewInfo({ current: 'traction', reviews: [], progress: complete, now }).state,
-    ).toBe('not_ready');
+      stageReviewInfo({ current: 'traction', reviews: [], progress: complete, now }),
+    ).toMatchObject({ state: 'ready', nextStage: 'investor_readiness' });
   });
 
   it('pending while a review is open', () => {

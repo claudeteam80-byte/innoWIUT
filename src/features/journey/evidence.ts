@@ -39,10 +39,11 @@ const urlField = optionalUrl('Enter a valid link, e.g. https://example.com.');
  * Validates a draft and returns the database row (without stage / update / file path).
  * Only the value that proves the evidence type is kept, matching the table's check constraint.
  */
-export function parseEvidenceDraft(
-  draft: EvidenceDraft,
-):
-  | { ok: true; row: Omit<EvidenceInsert, 'stage' | 'update_id' | 'file_path'> }
+export function parseEvidenceDraft(draft: EvidenceDraft):
+  | {
+      ok: true;
+      row: Omit<EvidenceInsert, 'stage' | 'update_id' | 'file_path' | 'readiness_requirement_id'>;
+    }
   | { ok: false; errors: EvidenceErrors } {
   const errors: EvidenceErrors = {};
   const type = draft.evidence_type;
@@ -103,7 +104,7 @@ export function parseEvidenceDraft(
 export async function saveEvidenceDrafts(
   startupId: string,
   drafts: readonly EvidenceDraft[],
-  context: Pick<EvidenceInsert, 'stage' | 'update_id'>,
+  context: Pick<EvidenceInsert, 'stage' | 'update_id' | 'readiness_requirement_id'>,
 ): Promise<void> {
   const rows: EvidenceInsert[] = [];
   const uploaded: string[] = [];

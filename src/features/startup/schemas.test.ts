@@ -60,4 +60,19 @@ describe('teamMemberSchema', () => {
       email: 'Enter a valid email address.',
     });
   });
+
+  it('keeps readiness experience and commitment optional', () => {
+    const base = { name: 'Aziz', role: '', email: '', linkedin_url: '' };
+    expect(
+      teamMemberSchema.parse({
+        ...base,
+        relevant_experience: ' 5 years ML ',
+        commitment: 'full_time',
+      }),
+    ).toMatchObject({ relevant_experience: '5 years ML', commitment: 'full_time' });
+    expect(
+      teamMemberSchema.parse({ ...base, relevant_experience: '', commitment: '' }),
+    ).toMatchObject({ relevant_experience: null, commitment: null });
+    expect(teamMemberSchema.parse(base).commitment).toBeUndefined();
+  });
 });
