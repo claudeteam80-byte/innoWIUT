@@ -1462,7 +1462,26 @@ await check(
       await a.rpc('request_investor_readiness_review', { p_startup_id: startupA.id }),
       'incomplete readiness',
     );
+    const before = await a.rpc('investor_readiness_state', { p_startup_id: startupA.id });
+    const missing = before.data
+      .filter((r) => r.required && !r.is_complete)
+      .map((r) => r.requirement_key);
+    // Company data is read from the startup profile (this fixture has no tagline / year yet).
+    assert(
+      missing.includes('founded_year') && !missing.includes('startup_name'),
+      `company not read from the profile: ${missing.join(', ')}`,
+    );
+    const prof = await a
+      .from('startups')
+      .update({ tagline: 'Temporary security startup', founded_year: 2024 })
+      .eq('id', startupA.id);
+    if (prof.error) throw prof.error;
     await completeReadiness(a, startupA.id);
+    const after = await a.rpc('investor_readiness_state', { p_startup_id: startupA.id });
+    const open = after.data
+      .filter((r) => r.required && !r.not_applicable && !r.is_complete)
+      .map((r) => r.requirement_key);
+    assert(open.length === 0, `still incomplete: ${open.join(', ')}`);
     const { data, error } = await a.rpc('request_investor_readiness_review', {
       p_startup_id: startupA.id,
     });
