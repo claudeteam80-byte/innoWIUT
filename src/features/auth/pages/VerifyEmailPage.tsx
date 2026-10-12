@@ -132,7 +132,7 @@ export function VerifyEmailPage() {
             type="button"
             onClick={() => void resend(email)}
             disabled={secondsLeft > 0}
-            className="-mx-1 rounded-md px-1 py-1.5 font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-subtle disabled:no-underline"
+            className="-mx-1 -my-[6.25px] inline-flex min-h-11 items-center rounded-md px-1 font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-subtle disabled:no-underline"
           >
             {secondsLeft > 0 ? `Resend in ${secondsLeft}s` : 'Resend'}
           </button>
